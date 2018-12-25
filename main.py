@@ -5,6 +5,9 @@ import spotipy.util as util
 from search import get_id
 import logging
 
+playlist_maintainer_username = "newmascot"
+playlist_id = "1UYhAHMEC42azRALlCCyn6"
+
 # create logger with 'spam_application'
 logger = logging.getLogger('slack_spotify_playlist')
 logger.setLevel(logging.DEBUG)
@@ -26,6 +29,7 @@ ch.setFormatter(formatter)
 # add the handlers to the logger
 logger.addHandler(fh)
 logger.addHandler(ch)
+
 
 app = Flask(__name__)
 
@@ -51,7 +55,7 @@ def music():
     if track_ids:
         try:
             sp.user_playlist_add_tracks(
-                "newmascot", "1UYhAHMEC42azRALlCCyn6", track_ids)
+                playlist_maintainer_username, playlist_id, track_ids)
         except spotipy.client.SpotifyException:
             logger.error("failed to add track(s) to playlist: %s", track_ids)
             return jsonify(
@@ -66,10 +70,7 @@ def music():
 
 
 def find_ids(msg):
-    """find_ids pulls the id of a track from its URL.
-
-    This relies on there being a '?'
-    """
+    """find_ids pulls the id of a track from its URL."""
     return re.search(r"https://open\.spotify\.com/track/(\w+)[?]", msg).groups()
 
 
