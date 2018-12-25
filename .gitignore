@@ -1,0 +1,6 @@
+.vscode
+env
+.cache-*
+spotify-env
+__pycache__
+*.log
