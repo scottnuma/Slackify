@@ -1,9 +1,9 @@
-from flask import Flask, request, Response, jsonify
+import logging
 import re
+
 import spotipy
 import spotipy.util as util
-from search import get_id
-import logging
+from flask import Flask, Response, jsonify, request
 
 playlist_maintainer_username = "newmascot"
 playlist_id = "1UYhAHMEC42azRALlCCyn6"
@@ -34,9 +34,9 @@ logger.addHandler(ch)
 app = Flask(__name__)
 
 token = util.prompt_for_user_token(
-        "newmascot",
-        "playlist-modify-public",
-    )
+    "newmascot",
+    "playlist-modify-public",
+)
 sp = spotipy.Spotify(token)
 logger.info("Initialized and authenticated Spotipy")
 
@@ -55,7 +55,7 @@ def music():
         return Response(), 200
 
     text = request.form.get('text', '')
-    track_ids = get_id(text)
+    track_ids = find_ids(text)
     logger.info("received message from channel")
     logger.info("identified these track ids: %s", track_ids)
 
@@ -85,7 +85,10 @@ def server_error(e):
 
 def find_ids(msg):
     """find_ids pulls the id of a track from its URL."""
-    return re.search(r"https://open\.spotify\.com/track/(\w+)[?]", msg).groups()
+    result = re.search(r"https://open\.spotify\.com/track/(\w+)[?]", msg)
+    if not result:
+        return []
+    return result.groups()
 
 
 if __name__ == "__main__":
