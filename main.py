@@ -33,6 +33,13 @@ logger.addHandler(ch)
 
 app = Flask(__name__)
 
+# token = util.prompt_for_user_token(
+#         "newmascot",
+#         "playlist-modify-public",
+#     )
+# sp = spotipy.Spotify(token)
+# logger.info("Initialized and authenticated Spotipy")
+
 
 @app.route('/healthcheck')
 def healthy():
@@ -68,6 +75,12 @@ def music():
 
     return Response(), 200
 
+@app.errorhandler(500)
+def server_error(e):
+    # Log the error and stacktrace.
+    logger.error('An error occurred during a request.')
+    return 'An internal error occurred.', 500
+
 
 def find_ids(msg):
     """find_ids pulls the id of a track from its URL."""
@@ -75,11 +88,6 @@ def find_ids(msg):
 
 
 if __name__ == "__main__":
-    token = util.prompt_for_user_token(
-        "newmascot",
-        "playlist-modify-public",
-    )
-    sp = spotipy.Spotify(token)
-    logger.info("Initialized and authenticated Spotipy")
+    
     logger.info("Starting server")
     app.run(port=5000, host='0.0.0.0', debug=False, use_reloader=False)
