@@ -1,97 +1,107 @@
 import logging
-import re
+import os
 
-import spotipy
-import spotipy.util as util
 from flask import Flask, Response, jsonify, request
+from slackeventsapi import SlackEventAdapter
 
-playlist_maintainer_username = "newmascot"
-playlist_id = "1UYhAHMEC42azRALlCCyn6"
+import spotify
 
-# create logger with 'spam_application'
-logger = logging.getLogger('slack_spotify_playlist')
-logger.setLevel(logging.DEBUG)
 
-# create file handler which logs even debug messages
-fh = logging.FileHandler('slack_spotify_playlist.log')
-fh.setLevel(logging.DEBUG)
+def init_logger():
+    """Initialize logger with labeling and locations."""
+    # create logger with 'spam_application'
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
 
-# create console handle
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s')
 
-# create formatter and add it to the handlers
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('slack_spotify_playlist.log')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+    # create console handle
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
+    return logger
+
+
+logger = init_logger()
+
+SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
+if not SLACK_SIGNING_SECRET:
+    logger.exception("SLACK_SIGNING_SECRET environment variable not found")
+
+SLACK_VERIFICATION_TOKEN = os.environ.get("SLACK_VERIFICATION_TOKEN")
+if not SLACK_VERIFICATION_TOKEN:
+    logger.exception("SLACK_VERIFICATION_TOKEN environment variable not found")
+
+ENVIRONMENT = os.environ.get("SLACK_MUSIC_ENVIRONMENT") or "prod"
 
 app = Flask(__name__)
+slack_events_adapter = SlackEventAdapter(
+    SLACK_SIGNING_SECRET, "/api/v1/music", app)
 
-token = util.prompt_for_user_token(
-    "newmascot",
-    "playlist-modify-public",
-)
-sp = spotipy.Spotify(token)
-logger.info("Initialized and authenticated Spotipy")
+domain_handler = {'open.spotify.com': spotify.handler}
+
+
+def handle_link(id, links):
+    """handle_link passes each link to their service's handler."""
+    if not links:
+        logger.info("ignoring empty links")
+
+        return
+
+    for link in links:
+        domain = link.get('domain')
+        if domain not in domain_handler:
+            logger.info("ignoring unrecognized domain: %s", domain)
+            continue
+
+        logger.info("passing link to domain handler")
+        domain_handler[domain](id, link)
+
+
+def generate_id(team_id, channel):
+    """generate_id creates an id unique to each channel regardless of workspace."""
+    return "demo"
+    return "github.com/scottnuma" + team_id + channel
 
 
 @app.route('/healthcheck')
 def healthy():
-    logger.debug("healthcheck ping")
+    logger.info("healthcheck ping")
     return 'ok'
 
 
-@app.route('/api/v0/music', methods=['POST'])
-def music():
-    user_id = request.form.get('user_id', '')
-    if user_id == "USLACKBOT":
-        logger.debug("Ignoring slackbot response")
-        return Response(), 200
+@slack_events_adapter.on("link_shared")
+def slack_music_link_handler(event):
+    logger.info("received event: %s", event)
+    if SLACK_VERIFICATION_TOKEN != event.get('token'):
+        logger.warn("event failed verifcation")
+        return 500
 
-    text = request.form.get('text', '')
-    track_ids = find_ids(text)
-    logger.info("received message from channel")
-    logger.info("identified these track ids: %s", track_ids)
+    slack_event = event.get('event')
+    if not slack_event:
+        return 500
 
-    if track_ids:
-        try:
-            sp.user_playlist_add_tracks(
-                playlist_maintainer_username, playlist_id, track_ids)
-        except spotipy.client.SpotifyException:
-            logger.error("failed to add track(s) to playlist: %s", track_ids)
-            return jsonify(
-                text="Hmm I wasn't able to add that track to the playlist",
-            )
-        else:
-            logger.info(
-                "successfully added track(s) to playlist: %s", track_ids)
-            return Response(), 200
-
+    id = generate_id(event.get('team_id'), slack_event.get('channel'))
+    handle_link(id, slack_event.get('links'))
     return Response(), 200
 
 
 @app.errorhandler(500)
 def server_error(e):
-    # Log the error and stacktrace.
     logger.error('An error occurred during a request.')
     return 'An internal error occurred.', 500
 
 
-def find_ids(msg):
-    """find_ids pulls the id of a track from its URL."""
-    result = re.search(r"https://open\.spotify\.com/track/(\w+)[?]", msg)
-    if not result:
-        return []
-    return result.groups()
-
-
 if __name__ == "__main__":
-
-    logger.info("Starting server")
-    app.run(port=5000, host='0.0.0.0', debug=False, use_reloader=False)
+    logger.info("starting web server")
+    app.run(port=5000, host='0.0.0.0', debug=True)
