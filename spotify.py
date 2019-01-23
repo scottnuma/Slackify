@@ -16,20 +16,21 @@ token = util.prompt_for_user_token(
     "playlist-modify-public",
 )
 
+
 sp = spotipy.Spotify(token)
 logger.info("authenticated Spotify")
 
 
 def find_ids(msg):
-    """find_ids pulls the id of a track from its URL."""
-    result = re.search(r"https://open\.spotify\.com/track/(\w+)[?]", msg)
+    """Pull the id of a track from its URL."""
+    result = re.search(r"https://open\.spotify\.com/track/(\w+)", msg)
     if not result:
         return []
     return result.groups()
 
 
 def handler(id, link):
-    """handler adds the track in link to the playlist associated with id.
+    """Add the track in link to the playlist associated with id.
 
     id: reference to a specific slack channel
     link: a dictionary from the Slack API
@@ -49,11 +50,37 @@ def handler(id, link):
             sp.user_playlist_add_tracks(
                 playlist_maintainer_username, playlist_id, track_ids)
         except spotipy.client.SpotifyException:
-            # logger.error("failed to add track(s) to playlist: %s", track_ids)
+            logger.error("failed to add track(s) to playlist: %s", track_ids)
             return jsonify(
                 text="Hmm I wasn't able to add that track to the playlist",
             )
         else:
-            # logger.info(
-                # "successfully added track(s) to playlist: %s", track_ids)
+            logger.info(
+                "successfully added track(s) to playlist: %s", track_ids)
             pass
+    else:
+        logger.info("did not identify any tracks in: %s", link)
+
+
+# Ideally we'd be able to use different accounts depending on what
+# channel and workspace they're in. This would require authentication
+# through Slack, rather than just through terminal.
+
+# SpotifyClients should be able to provide the proper Spotify client
+# for each channel and workspace.
+class SpotifyClients:
+    def __init__(self):
+        self.clients = dict()
+
+    def get(self, id):
+        if id not in self.clients:
+            self.init(id)
+        return self.clients[id]
+
+    def init(self, id):
+        token = util.prompt_for_user_token(
+            "newmascot",
+            "playlist-modify-public",
+        )
+        self.clients[id] = spotipy.Spotify(token)
+

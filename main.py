@@ -1,5 +1,6 @@
 import logging
 import os
+import hashlib
 
 from flask import Flask, Response, jsonify, request
 from slackeventsapi import SlackEventAdapter
@@ -52,7 +53,7 @@ domain_handler = {'open.spotify.com': spotify.handler}
 
 
 def handle_link(id, links):
-    """handle_link passes each link to their service's handler."""
+    """Pass each link to their service's handler."""
     if not links:
         logger.info("ignoring empty links")
 
@@ -69,9 +70,9 @@ def handle_link(id, links):
 
 
 def generate_id(team_id, channel):
-    """generate_id creates an id unique to each channel regardless of workspace."""
-    return "demo"
-    return "github.com/scottnuma" + team_id + channel
+    """Create an id unique to each channel regardless of workspace."""
+    combined = "github.com/scottnuma" + str(team_id) + str(channel)
+    return hashlib.sha224(combined.encode("utf-8")).digest()
 
 
 @app.route('/healthcheck')
@@ -84,7 +85,7 @@ def healthy():
 def slack_music_link_handler(event):
     logger.info("received event: %s", event)
     if SLACK_VERIFICATION_TOKEN != event.get('token'):
-        logger.warn("event failed verifcation")
+        logger.warn("event failed verification")
         return 500
 
     slack_event = event.get('event')
