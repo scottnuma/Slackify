@@ -49,8 +49,8 @@ def handler(id, link):
         try:
             sp.user_playlist_add_tracks(
                 playlist_maintainer_username, playlist_id, track_ids)
-        except spotipy.client.SpotifyException:
-            logger.error("failed to add track(s) to playlist: %s", track_ids)
+        except spotipy.client.SpotifyException as error:
+            logger.error("failed to add track(s) to playlist: %s due to %s", track_ids, error)
             return jsonify(
                 text="Hmm I wasn't able to add that track to the playlist",
             )
