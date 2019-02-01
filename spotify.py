@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 playlist_maintainer_username = "newmascot"
 playlist_id = "1UYhAHMEC42azRALlCCyn6"
 
+ADD_SUCCESS = "success"
+
 token = util.prompt_for_user_token(
     "newmascot",
     "playlist-modify-public",
@@ -32,6 +34,8 @@ def find_ids(msg):
 def handler(id, link):
     """Add the track in link to the playlist associated with id.
 
+    Returns the response text if any.
+
     id: reference to a specific slack channel
     link: a dictionary from the Slack API
     """
@@ -51,13 +55,12 @@ def handler(id, link):
                 playlist_maintainer_username, playlist_id, track_ids)
         except spotipy.client.SpotifyException as error:
             logger.error("failed to add track(s) to playlist: %s due to %s", track_ids, error)
-            return jsonify(
-                text="Hmm I wasn't able to add that track to the playlist",
-            )
+            return "Hmm I wasn't able to add a track to the playlist"
         else:
             logger.info(
                 "successfully added track(s) to playlist: %s", track_ids)
-            pass
+            return ADD_SUCCESS
+             
     else:
         logger.info("did not identify any tracks in: %s", link)
 

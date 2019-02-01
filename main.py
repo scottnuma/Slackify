@@ -4,6 +4,7 @@ import hashlib
 
 from flask import Flask, Response, jsonify, request
 from slackeventsapi import SlackEventAdapter
+from slackclient import SlackClient
 
 import spotify
 
@@ -43,6 +44,10 @@ SLACK_VERIFICATION_TOKEN = os.environ.get("SLACK_VERIFICATION_TOKEN")
 if not SLACK_VERIFICATION_TOKEN:
     logger.exception("SLACK_VERIFICATION_TOKEN environment variable not found")
 
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+if not SLACK_BOT_TOKEN:
+    logger.exception("SLACK_BOT_TOKEN environment variable not found")
+
 ENVIRONMENT = os.environ.get("SLACK_MUSIC_ENVIRONMENT") or "prod"
 
 app = Flask(__name__)
@@ -51,14 +56,19 @@ slack_events_adapter = SlackEventAdapter(
 
 domain_handler = {'open.spotify.com': spotify.handler}
 
+sc = SlackClient(SLACK_BOT_TOKEN)
 
 def handle_link(id, links):
     """Pass each link to their service's handler."""
+    handler_feedback = []
+
     if not links:
         logger.info("ignoring empty links")
-
         return
 
+    if len(links) > 1:
+        logger.info("multiple links given to handle_link")
+    
     for link in links:
         domain = link.get('domain')
         if domain not in domain_handler:
@@ -66,8 +76,10 @@ def handle_link(id, links):
             continue
 
         logger.info("passing link to domain handler")
-        domain_handler[domain](id, link)
-
+        handler_feedback.append(domain_handler[domain](id, link))
+            
+    return handler_feedback
+            
 
 def generate_id(team_id, channel):
     """Create an id unique to each channel regardless of workspace."""
@@ -90,10 +102,30 @@ def slack_music_link_handler(event):
 
     slack_event = event.get('event')
     if not slack_event:
+        logger.info("not a slack event")
         return 500
 
     id = generate_id(event.get('team_id'), slack_event.get('channel'))
-    handle_link(id, slack_event.get('links'))
+
+    perfect_results = True
+    for result in handle_link(id, slack_event.get('links')):
+        if result != spotify.ADD_SUCCESS:
+            perfect_results = False
+            sc.api_call(
+                "chat.postMessage",
+                channel=slack_event.get('channel'),
+                text=result,
+                thread_ts=slack_event.get('message_ts')
+            )
+
+    if perfect_results:
+        sc.api_call(
+            "reactions.add",
+            channel=slack_event.get('channel'),
+            name="notes",
+            timestamp=slack_event.get('message_ts')
+        )
+    
     return Response(), 200
 
 
