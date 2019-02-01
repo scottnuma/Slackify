@@ -4,3 +4,5 @@ venv
 spotify-env
 __pycache__
 *.log
+testing
+connect.sh
