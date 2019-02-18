@@ -1,10 +1,10 @@
+import hashlib
 import logging
 import os
-import hashlib
 
-from flask import Flask, Response, jsonify, request
-from slackeventsapi import SlackEventAdapter
+from flask import Flask, Response, jsonify
 from slackclient import SlackClient
+from slackeventsapi import SlackEventAdapter
 
 import spotify
 
@@ -58,17 +58,18 @@ domain_handler = {'open.spotify.com': spotify.handler}
 
 sc = SlackClient(SLACK_BOT_TOKEN)
 
-def handle_link(id, links):
+
+def handle_link(channel_id, links):
     """Pass each link to their service's handler."""
     handler_feedback = []
 
     if not links:
         logger.info("ignoring empty links")
-        return
+        return None
 
     if len(links) > 1:
         logger.info("multiple links given to handle_link")
-    
+
     for link in links:
         domain = link.get('domain')
         if domain not in domain_handler:
@@ -76,10 +77,10 @@ def handle_link(id, links):
             continue
 
         logger.info("passing link to domain handler")
-        handler_feedback.append(domain_handler[domain](id, link))
-            
+        handler_feedback.append(domain_handler[domain](channel_id, link))
+
     return handler_feedback
-            
+
 
 def generate_id(team_id, channel):
     """Create an id unique to each channel regardless of workspace."""
@@ -89,15 +90,44 @@ def generate_id(team_id, channel):
 
 @app.route('/healthcheck')
 def healthy():
+    """Provide quick affirmation of that the server is online"""
     logger.info("healthcheck ping")
     return 'ok'
+
+# Example responder to greetings
+
+
+@slack_events_adapter.on("app_mention")
+def handle_app_mention(event_data):
+    """Give friendly response in thread when @mentioned."""
+    logger.info("received mention: %s", event_data)
+    message = event_data["event"]
+    if message.get("subtype") is None:
+        text = message.get('text')
+        if "hi" in text:
+            logger.info("responding to message from %s", message["user"])
+            response = ":notes:hi <@%s> :notes:" % message["user"]
+            sc.api_call("chat.postMessage",
+                        channel=message["channel"],
+                        text=response,
+                        thread_ts=message['event_ts'])
+        if "register channel" in text:
+            channel_id = generate_id(
+                event_data['team_id'], message.get('channel'))
+            logger.info("registering channel %s for %s",
+                        channel_id.hex(), message["user"])
+        return Response(), 200
+
+    logger.info("ignoring mention")
+    return Response(), 200
 
 
 @slack_events_adapter.on("link_shared")
 def slack_music_link_handler(event):
+    """Pass link events to their respective handlers and respond."""
     logger.info("received event: %s", event)
     if SLACK_VERIFICATION_TOKEN != event.get('token'):
-        logger.warn("event failed verification")
+        logger.warning("event failed verification")
         return 500
 
     slack_event = event.get('event')
@@ -105,10 +135,10 @@ def slack_music_link_handler(event):
         logger.info("not a slack event")
         return 500
 
-    id = generate_id(event.get('team_id'), slack_event.get('channel'))
+    channel_id = generate_id(event.get('team_id'), slack_event.get('channel'))
 
     perfect_results = True
-    for result in handle_link(id, slack_event.get('links')):
+    for result in handle_link(channel_id, slack_event.get('links')):
         if result != spotify.ADD_SUCCESS:
             perfect_results = False
             sc.api_call(
@@ -125,7 +155,9 @@ def slack_music_link_handler(event):
             name="notes",
             timestamp=slack_event.get('message_ts')
         )
-    
+
+    # The response to this should be given asynchronously to increase speed
+    # The latency may cause repeat messages
     return Response(), 200
 
 
