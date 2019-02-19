@@ -1,11 +1,15 @@
 import hashlib
 import logging
 import os
+import queue
+import threading
 
 from flask import Flask, Response, jsonify
 from slackclient import SlackClient
 from slackeventsapi import SlackEventAdapter
 
+import handler_app_mention
+import handler_link_shared
 import spotify
 
 
@@ -50,36 +54,30 @@ if not SLACK_BOT_TOKEN:
 
 ENVIRONMENT = os.environ.get("SLACK_MUSIC_ENVIRONMENT") or "prod"
 
-app = Flask(__name__)
-slack_events_adapter = SlackEventAdapter(
-    SLACK_SIGNING_SECRET, "/api/v1/music", app)
-
-domain_handler = {'open.spotify.com': spotify.handler}
-
 sc = SlackClient(SLACK_BOT_TOKEN)
 
+q = queue.Queue()
 
-def handle_link(channel_id, links):
-    """Pass each link to their service's handler."""
-    handler_feedback = []
 
-    if not links:
-        logger.info("ignoring empty links")
-        return None
+def process_queue(q):
+    """Clear tasks from the queue.
 
-    if len(links) > 1:
-        logger.info("multiple links given to handle_link")
+    Verifies events, identifies the sender, and passes to handle_event.
+    """
+    logging.debug("starting thread %s", threading.currentThread().getName())
 
-    for link in links:
-        domain = link.get('domain')
-        if domain not in domain_handler:
-            logger.info("ignoring unrecognized domain: %s", domain)
+    while True:
+        event = q.get()
+
+        if SLACK_VERIFICATION_TOKEN != event.get('token'):
+            logger.warning("event failed verification")
+            q.task_done()
             continue
 
-        logger.info("passing link to domain handler")
-        handler_feedback.append(domain_handler[domain](channel_id, link))
-
-    return handler_feedback
+        slack_event = event['event']
+        channel_id = generate_id(event['team_id'], slack_event['channel'])
+        handle_event(slack_event, channel_id)
+        q.task_done()
 
 
 def generate_id(team_id, channel):
@@ -88,77 +86,16 @@ def generate_id(team_id, channel):
     return hashlib.sha224(combined.encode("utf-8")).digest()
 
 
+app = Flask(__name__)
+slack_events_adapter = SlackEventAdapter(
+    SLACK_SIGNING_SECRET, "/api/v1/music", app)
+
+
 @app.route('/healthcheck')
 def healthy():
     """Provide quick affirmation of that the server is online"""
     logger.info("healthcheck ping")
     return 'ok'
-
-# Example responder to greetings
-
-
-@slack_events_adapter.on("app_mention")
-def handle_app_mention(event_data):
-    """Give friendly response in thread when @mentioned."""
-    logger.info("received mention: %s", event_data)
-    message = event_data["event"]
-    if message.get("subtype") is None:
-        text = message.get('text')
-        if "hi" in text:
-            logger.info("responding to message from %s", message["user"])
-            response = ":notes:hi <@%s> :notes:" % message["user"]
-            sc.api_call("chat.postMessage",
-                        channel=message["channel"],
-                        text=response,
-                        thread_ts=message['event_ts'])
-        if "register channel" in text:
-            channel_id = generate_id(
-                event_data['team_id'], message.get('channel'))
-            logger.info("registering channel %s for %s",
-                        channel_id.hex(), message["user"])
-        return Response(), 200
-
-    logger.info("ignoring mention")
-    return Response(), 200
-
-
-@slack_events_adapter.on("link_shared")
-def slack_music_link_handler(event):
-    """Pass link events to their respective handlers and respond."""
-    logger.info("received event: %s", event)
-    if SLACK_VERIFICATION_TOKEN != event.get('token'):
-        logger.warning("event failed verification")
-        return 500
-
-    slack_event = event.get('event')
-    if not slack_event:
-        logger.info("not a slack event")
-        return 500
-
-    channel_id = generate_id(event.get('team_id'), slack_event.get('channel'))
-
-    perfect_results = True
-    for result in handle_link(channel_id, slack_event.get('links')):
-        if result != spotify.ADD_SUCCESS:
-            perfect_results = False
-            sc.api_call(
-                "chat.postMessage",
-                channel=slack_event.get('channel'),
-                text=result,
-                thread_ts=slack_event.get('message_ts')
-            )
-
-    if perfect_results:
-        sc.api_call(
-            "reactions.add",
-            channel=slack_event.get('channel'),
-            name="notes",
-            timestamp=slack_event.get('message_ts')
-        )
-
-    # The response to this should be given asynchronously to increase speed
-    # The latency may cause repeat messages
-    return Response(), 200
 
 
 @app.errorhandler(500)
@@ -167,6 +104,42 @@ def server_error(e):
     return 'An internal error occurred.', 500
 
 
+def handle_event(slack_event, channel_id):
+    """Handle event with respective handler."""
+    event_type = slack_event['type']
+    if event_type == "app_mention":
+        handler_app_mention.handle_app_mention(sc, slack_event, channel_id)
+    elif event_type == "link_shared":
+        handler_link_shared.link_handler(sc, slack_event, channel_id)
+    else:
+        logger.warning("Unhandled %s event: %s", event_type, slack_event)
+
+
+@slack_events_adapter.on("app_mention")
+def handle_app_mention(event):
+    """Give friendly response in thread when @mentioned."""
+    logger.info("received mention: %s", event)
+    q.put(event)
+    logger.info("sending 200")
+    return Response(), 200
+
+
+@slack_events_adapter.on("link_shared")
+def slack_music_link_handler(event):
+    """Pass link events to their respective handlers and respond."""
+    logger.info("received event: %s", event)
+    q.put(event)
+    logger.info("sending 200")
+    return Response(), 200
+
+
 if __name__ == "__main__":
     logger.info("starting web server")
+
+    threads_num = 3
+    for i in range(threads_num):
+        t = threading.Thread(name="Consumer-"+str(i),
+                             target=process_queue, args=(q,))
+        t.start()
+
     app.run(port=5000, host='0.0.0.0', debug=True)
