@@ -41,6 +41,7 @@ def handler(id, link):
 
     if track_ids:
         try:
+            logger.info("attempting Spotify authentication")
             token = util.prompt_for_user_token(
                 "newmascot",
                 "playlist-modify-public",

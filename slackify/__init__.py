@@ -10,6 +10,7 @@ from slackeventsapi import SlackEventAdapter
 from .util import *
 from .views import *
 from .handlers import handle_app_mention, link_handler
+from .spotify import spotify_views
 
 logger = init_logger()
 
@@ -26,7 +27,7 @@ SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 if not SLACK_BOT_TOKEN:
     logger.exception("SLACK_BOT_TOKEN environment variable not found")
 
-ENVIRONMENT = os.environ.get("SLACK_MUSIC_ENVIRONMENT") or "prod"
+ENVIRONMENT = os.getenv("SLACK_MUSIC_ENVIRONMENT", "prod")
 
 def process_queue(sc, q):
     """Clear tasks from the queue.
@@ -63,6 +64,7 @@ def handle_event(sc, slack_event, channel_id):
 def create_app():
     app = Flask(__name__)
     app.register_blueprint(basics)
+    app.register_blueprint(spotify_views.spotify_routes, url_prefix="/spotify")
 
     sc = SlackClient(SLACK_BOT_TOKEN)
 

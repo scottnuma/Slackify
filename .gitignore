@@ -1,8 +1,11 @@
 .vscode
 venv
 .cache-*
+caches/
 spotify-env
 __pycache__
 *.log
 testing
 connect.sh
+scripts/connect.sh
+
