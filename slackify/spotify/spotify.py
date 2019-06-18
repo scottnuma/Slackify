@@ -1,9 +1,13 @@
 import logging
 import re
+import sqlite3
 
 import spotipy
 import spotipy.util as util
 from flask import Flask, Response, jsonify, request
+
+from .spotify_auth import retrieve_access_token, DB_FILE
+
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +15,8 @@ playlist_maintainer_username = "newmascot"
 playlist_id = "1UYhAHMEC42azRALlCCyn6"
 
 ADD_SUCCESS = "success"
+
+SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init"
 
 
 def find_ids(msg):
@@ -22,7 +28,8 @@ def find_ids(msg):
 
 
 def handler(id, link):
-    """Add the track in link to the playlist associated with id.
+    """
+    Add the track in link to the playlist associated with id.
 
     Returns the response text if any.
 
@@ -42,10 +49,13 @@ def handler(id, link):
     if track_ids:
         try:
             logger.info("attempting Spotify authentication")
-            token = util.prompt_for_user_token(
-                "newmascot",
-                "playlist-modify-public",
-            )
+            conn = sqlite3.connect(DB_FILE)
+            token = retrieve_access_token(conn, id)
+
+            if token is None:
+                logger.info("failed to retrieve access token")
+                return "please add your Spotify account: {}".format(SPOTIFY_AUTH_URL)
+
             sp = spotipy.Spotify(token)
             logger.info("authenticated Spotify")
             sp.user_playlist_add_tracks(

@@ -1,6 +1,7 @@
 from flask import Blueprint, current_app, redirect, url_for, request
+import sqlite3
 
-from .spotify_auth import create_spotify_oauth, store_access_token
+from .spotify_auth import create_spotify_oauth, store_access_token, DB_FILE
 
 spotify_routes = Blueprint('spotifyRoutes', __name__)
 
@@ -15,7 +16,8 @@ def authorize():
 
     if cached_token_info:
         current_app.logger.info("found cached token")
-        store_access_token(None, None, cached_token_info['access_token'])
+        conn = sqlite3.connect(DB_FILE)
+        store_access_token(conn, b"newmascot_id", cached_token_info['access_token'])
         return redirect(url_for('spotifyRoutes.success'))
 
     current_app.logger.info("failed to find cached token")
@@ -35,7 +37,8 @@ def handle_auth():
     try:
         code = spotify_oauth.parse_response_code(request.url)
         token_info = spotify_oauth.get_access_token(code)
-        store_access_token(None, None, token_info['access_token'])
+        conn = sqlite3.connect(DB_FILE)
+        store_access_token(conn, b"newmascot_id", token_info['access_token'])
         return redirect(url_for('spotifyRoutes.success'))
     except Exception:
         current_app.logger.exception("Failed to authorize with code from URL")
@@ -43,6 +46,8 @@ def handle_auth():
 
 @spotify_routes.route('/auth/success')
 def success():
+    # It might be nice to send a message to the Slack channel
+    # indicating that the account has been linked
     return 'success'
 
 @spotify_routes.route("/auth/failure")
