@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 playlist_maintainer_username = "newmascot"
 playlist_id = "1UYhAHMEC42azRALlCCyn6"
 
-ADD_SUCCESS = "success"
-
 SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init"
+authentication_request_msg = "please add your Spotify account: {}".format(SPOTIFY_AUTH_URL)
+
+ADD_SUCCESS = "success"
 
 
 def find_ids(msg):
@@ -50,11 +51,14 @@ def handler(id, link):
         try:
             logger.info("attempting Spotify authentication")
             conn = sqlite3.connect(DB_FILE)
-            token = retrieve_access_token(conn, id)
+            temporary_id = b"newmascot_id"
+            token = retrieve_access_token(conn, temporary_id)
+            logger.info("current token: %s", token)
+            conn.close()
 
             if token is None:
                 logger.info("failed to retrieve access token")
-                return "please add your Spotify account: {}".format(SPOTIFY_AUTH_URL)
+                return authentication_request_msg
 
             sp = spotipy.Spotify(token)
             logger.info("authenticated Spotify")
@@ -63,6 +67,8 @@ def handler(id, link):
         except spotipy.client.SpotifyException as error:
             logger.error(
                 "failed to add track(s) to playlist: %s due to %s", track_ids, error)
+            if error.http_status == 401:
+                return authentication_request_msg
             return "Hmm I wasn't able to add a track to the playlist"
         else:
             logger.info(

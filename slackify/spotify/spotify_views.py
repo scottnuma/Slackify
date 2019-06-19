@@ -10,18 +10,7 @@ def authorize():
     username = "newmascot"
     current_app.logger.info("authorizing %s", username)
     spotify_oauth = create_spotify_oauth(username)
-
-    # Attempt for cached token
-    cached_token_info = spotify_oauth.get_cached_token()
-
-    if cached_token_info:
-        current_app.logger.info("found cached token")
-        conn = sqlite3.connect(DB_FILE)
-        store_access_token(conn, b"newmascot_id", cached_token_info['access_token'])
-        return redirect(url_for('spotifyRoutes.success'))
-
-    current_app.logger.info("failed to find cached token")
-
+    
     # Attempt full authorization
     auth_url = spotify_oauth.get_authorize_url()
     return redirect(auth_url)

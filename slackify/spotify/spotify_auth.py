@@ -31,7 +31,10 @@ def store_access_token(conn, id, access_token):
     """Stores an retrievable access token"""
     cur = conn.cursor()
     sql_query = '''INSERT INTO tokens (id, token) VALUES(?,?)'''
-    cur.execute(sql_query, (id, access_token))
+    try:
+        cur.execute(sql_query, (id, access_token))
+    except sqlite3.IntegrityError:
+        cur.execute(''' UPDATE tokens SET token = ? WHERE id = ?''', (access_token, id))
     conn.commit()
     return cur.lastrowid
 
@@ -41,6 +44,7 @@ def retrieve_access_token(conn, id):
     
     Returns None upon failure.
     """
+    logger.info("retrieving access token for %s", id)
     cur = conn.cursor()
     query = "SELECT token FROM tokens WHERE id=?"
     cur.execute("SELECT token FROM tokens;")

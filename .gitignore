@@ -8,4 +8,5 @@ __pycache__
 testing
 connect.sh
 scripts/connect.sh
+*.db
 
