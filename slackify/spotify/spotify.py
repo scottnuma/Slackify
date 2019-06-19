@@ -1,14 +1,21 @@
 import logging
 import re
+import sqlite3
 
 import spotipy
 import spotipy.util as util
 from flask import Flask, Response, jsonify, request
 
+from .spotify_auth import retrieve_access_token, DB_FILE
+
+
 logger = logging.getLogger(__name__)
 
 playlist_maintainer_username = "newmascot"
 playlist_id = "1UYhAHMEC42azRALlCCyn6"
+
+SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init"
+authentication_request_msg = "please add your Spotify account: {}".format(SPOTIFY_AUTH_URL)
 
 ADD_SUCCESS = "success"
 
@@ -22,7 +29,8 @@ def find_ids(msg):
 
 
 def handler(id, link):
-    """Add the track in link to the playlist associated with id.
+    """
+    Add the track in link to the playlist associated with id.
 
     Returns the response text if any.
 
@@ -41,10 +49,17 @@ def handler(id, link):
 
     if track_ids:
         try:
-            token = util.prompt_for_user_token(
-                "newmascot",
-                "playlist-modify-public",
-            )
+            logger.info("attempting Spotify authentication")
+            conn = sqlite3.connect(DB_FILE)
+            temporary_id = b"newmascot_id"
+            token = retrieve_access_token(conn, temporary_id)
+            logger.info("current token: %s", token)
+            conn.close()
+
+            if token is None:
+                logger.info("failed to retrieve access token")
+                return authentication_request_msg
+
             sp = spotipy.Spotify(token)
             logger.info("authenticated Spotify")
             sp.user_playlist_add_tracks(
@@ -52,6 +67,8 @@ def handler(id, link):
         except spotipy.client.SpotifyException as error:
             logger.error(
                 "failed to add track(s) to playlist: %s due to %s", track_ids, error)
+            if error.http_status == 401:
+                return authentication_request_msg
             return "Hmm I wasn't able to add a track to the playlist"
         else:
             logger.info(
