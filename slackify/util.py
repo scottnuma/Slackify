@@ -2,6 +2,12 @@ import logging
 import hashlib
 import os
 
+logger = logging.getLogger(__name__)
+
+ID_SECRET_KEY = os.environ.get("SLACK_ID_KEY")
+if not ID_SECRET_KEY:
+    logger.warning("SLACK_ID_KEY environment variable not found")
+
 def init_logger():
     """Initialize logger with labeling and locations."""
     # create logger with 'spam_application'
@@ -27,6 +33,11 @@ def init_logger():
     return logger
 
 def generate_id(team_id, channel):
-    """Create an id unique to each channel regardless of workspace."""
-    combined = "github.com/scottnuma" + str(team_id) + str(channel)
-    return hashlib.sha224(combined.encode("utf-8")).digest()
+    """
+    Create an id unique to each channel regardless of workspace.
+    
+    Returns a hex string
+    """
+    dev_id = "github.com/scottnuma"
+    combined = '-'.join([dev_id, team_id, channel,ID_SECRET_KEY])
+    return hashlib.sha224(combined.encode("utf-8")).digest().hex()

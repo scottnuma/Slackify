@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 playlist_maintainer_username = "newmascot"
 playlist_id = "1UYhAHMEC42azRALlCCyn6"
 
-SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init"
-authentication_request_msg = "please add your Spotify account: {}".format(SPOTIFY_AUTH_URL)
+SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init/"
+authentication_request_template = "link your Spotify account to this channel: {}{}"
 
 ADD_SUCCESS = "success"
 
@@ -38,6 +38,9 @@ def handler(id, link):
     link: a dictionary from the Slack API
     """
     logger.info("handling link: %s", link)
+    logger.info("received from: %s", id)
+ 
+    authentication_request_msg = authentication_request_template.format(SPOTIFY_AUTH_URL,id)
 
     text = link.get('url')
     if not text:
@@ -51,8 +54,7 @@ def handler(id, link):
         try:
             logger.info("attempting Spotify authentication")
             conn = sqlite3.connect(DB_FILE)
-            temporary_id = b"newmascot_id"
-            token = retrieve_access_token(conn, temporary_id)
+            token = retrieve_access_token(conn, id)
             logger.info("current token: %s", token)
             conn.close()
 

@@ -3,7 +3,7 @@ import sqlite3
 DB_FILE = "tokens.db"
 
 sql_query = """CREATE TABLE tokens (
- id BLOB PRIMARY KEY,
+ id TEXT PRIMARY KEY,
  token TEXT NOT NULL
 );"""
 

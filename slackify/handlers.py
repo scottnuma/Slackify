@@ -29,10 +29,10 @@ def handle_app_mention(slack_client, message, channel_id):
         logger.info("ignoring mention")
 
 
-def link_handler(slack_client, slack_event, channel_id):
+def link_handler(slack_client, slack_event, id):
     """Pass link events to their respective handlers and respond."""
     perfect_results = True
-    for result in domain_handler(channel_id, slack_event.get('links')):
+    for result in domain_handler(id, slack_event.get('links')):
         if result != spotify.ADD_SUCCESS:
             perfect_results = False
             slack_client.api_call(
@@ -51,7 +51,7 @@ def link_handler(slack_client, slack_event, channel_id):
         )
 
 
-def domain_handler(channel_id, links):
+def domain_handler(id, links):
     """Pass each link to their service's handler."""
     handler_feedback = []
 
@@ -69,7 +69,7 @@ def domain_handler(channel_id, links):
             continue
 
         logger.info("passing link to domain handler")
-        handler_feedback.append(domain_handlers[domain](channel_id, link))
+        handler_feedback.append(domain_handlers[domain](id, link))
 
     return handler_feedback
 

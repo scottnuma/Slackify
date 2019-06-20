@@ -15,17 +15,9 @@ from .spotify import spotify_views
 logger = init_logger()
 
 # Initialize configuration variables
-SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
-if not SLACK_SIGNING_SECRET:
-    logger.exception("SLACK_SIGNING_SECRET environment variable not found")
-
 SLACK_VERIFICATION_TOKEN = os.environ.get("SLACK_VERIFICATION_TOKEN")
 if not SLACK_VERIFICATION_TOKEN:
-    logger.exception("SLACK_VERIFICATION_TOKEN environment variable not found")
-
-SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
-if not SLACK_BOT_TOKEN:
-    logger.exception("SLACK_BOT_TOKEN environment variable not found")
+    logger.warning("SLACK_VERIFICATION_TOKEN environment variable not found")
 
 ENVIRONMENT = os.getenv("SLACK_MUSIC_ENVIRONMENT", "prod")
 
@@ -45,18 +37,18 @@ def process_queue(sc, q):
             continue
 
         slack_event = event['event']
-        channel_id = generate_id(event['team_id'], slack_event['channel'])
-        handle_event(sc, slack_event, channel_id)
+        id = generate_id(event['team_id'], slack_event['channel'])
+        handle_event(sc, slack_event, id)
         q.task_done()
 
 
-def handle_event(sc, slack_event, channel_id):
+def handle_event(sc, slack_event, id):
     """Handle event with respective handler."""
     event_type = slack_event['type']
     if event_type == "app_mention":
-        handle_app_mention(sc, slack_event, channel_id)
+        handle_app_mention(sc, slack_event, id)
     elif event_type == "link_shared":
-        link_handler(sc, slack_event, channel_id)
+        link_handler(sc, slack_event, id)
     else:
         logger.warning("Unhandled %s event: %s", event_type, slack_event)
 
@@ -65,6 +57,11 @@ def create_app():
     app = Flask(__name__)
     app.register_blueprint(basics)
     app.register_blueprint(spotify_views.spotify_routes, url_prefix="/spotify")
+    app.secret_key = os.environ["FLASK_SESSION_KEY"]
+
+    SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+    if not SLACK_BOT_TOKEN:
+        logger.exception("SLACK_BOT_TOKEN environment variable not found")
 
     sc = SlackClient(SLACK_BOT_TOKEN)
 
@@ -76,6 +73,10 @@ def create_app():
                              target=process_queue, args=(sc, q,))
         t.start()
 
+    SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
+    if not SLACK_SIGNING_SECRET:
+        logger.exception("SLACK_SIGNING_SECRET environment variable not found")
+        
     slack_events_adapter = SlackEventAdapter(
         SLACK_SIGNING_SECRET, "/api/v1/music", app)
 

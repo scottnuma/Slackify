@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 DB_FILE = "tokens.db"
 
 
-def create_spotify_oauth(username):
+def create_spotify_oauth(id):
     client_id = os.environ['SPOTIPY_CLIENT_ID']
     client_secret = os.environ['SPOTIPY_CLIENT_SECRET']
     redirect_uri = os.environ['SPOTIPY_REDIRECT_URI']
@@ -21,7 +21,7 @@ def create_spotify_oauth(username):
     cache_dir = "caches"
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
-    cache_path = "{}/cache-{}".format(cache_dir, username)
+    cache_path = "{}/cache-{}".format(cache_dir, id)
     
     spotify_oauth = oauth2.SpotifyOAuth(client_id, client_secret, redirect_uri, 
         scope=SCOPE, cache_path=cache_path)
@@ -47,7 +47,7 @@ def retrieve_access_token(conn, id):
     logger.info("retrieving access token for %s", id)
     cur = conn.cursor()
     query = "SELECT token FROM tokens WHERE id=?"
-    cur.execute("SELECT token FROM tokens;")
+    cur.execute(query, (id,))
  
     rows = cur.fetchall()
 

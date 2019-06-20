@@ -9,7 +9,7 @@ class TestTokenMethods(unittest.TestCase):
 
     def setUp(self):
         sql_query = """CREATE TABLE IF NOT EXISTS tokens (
-                        id BLOB PRIMARY KEY,
+                        id TEXT PRIMARY KEY,
                         token TEXT NOT NULL
                         );"""
 
@@ -29,9 +29,10 @@ class TestTokenMethods(unittest.TestCase):
     def test_store_and_retrieve(self):
         conn = sqlite3.connect(self.test_database_file)
         test_token = "test_access_token"
-        test_id = b"test_id"
+        test_id = "test_id"
         self.assertEqual(1, slackify.spotify.store_access_token(conn, test_id, test_token))
         self.assertEqual(test_token, slackify.spotify.retrieve_access_token(conn, test_id))
+        self.assertEqual(None, slackify.spotify.retrieve_access_token(conn, "random_id"))
 
 if __name__ == "__main__":
     unittest.main()
