@@ -6,16 +6,13 @@ import spotipy
 import spotipy.util as util
 from flask import Flask, Response, jsonify, request
 
-from .spotify_auth import retrieve_access_token, DB_FILE
+from .spotify_database import get_db, get_playlist_user, get_access_token
 
 
 logger = logging.getLogger(__name__)
 
-playlist_maintainer_username = "newmascot"
-playlist_id = "1UYhAHMEC42azRALlCCyn6"
-
 SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init/"
-authentication_request_template = "link your Spotify account to this channel: {}{}"
+authentication_request_template = "Link your playlist to this channel: {}{}"
 
 ADD_SUCCESS = "success"
 
@@ -27,20 +24,36 @@ def find_ids(msg):
         return []
     return result.groups()
 
+def get_username(sp):
+    """Get the username from a login"""
+    logger.info("authenticated Spotify")
+    current_user_info = sp.current_user()
+    username = current_user_info['id']
+    logger.info("got username: %s", username)
+    return username
 
-def handler(id, link):
+def get_playlists(sp, username):
+    """Get a list of playlist (name, id)"""
+    playlists = sp.user_playlists(username, limit=10)['items']
+    formatted_playlists = [
+        (playlist['name'], playlist['id']) for playlist in playlists]
+    logger.info("%s playlists: %s", username, formatted_playlists)
+    return formatted_playlists
+
+
+def handler(channel_id, link):
     """
-    Add the track in link to the playlist associated with id.
+    Add the track in link to the playlist associated with channel_id.
 
     Returns the response text if any.
 
-    id: reference to a specific slack channel
+    channel_id: reference to a specific slack channel
     link: a dictionary from the Slack API
     """
     logger.info("handling link: %s", link)
-    logger.info("received from: %s", id)
+    logger.info("received from: %s", channel_id)
  
-    authentication_request_msg = authentication_request_template.format(SPOTIFY_AUTH_URL,id)
+    authentication_request_msg = authentication_request_template.format(SPOTIFY_AUTH_URL,channel_id)
 
     text = link.get('url')
     if not text:
@@ -53,19 +66,26 @@ def handler(id, link):
     if track_ids:
         try:
             logger.info("attempting Spotify authentication")
-            conn = sqlite3.connect(DB_FILE)
-            token = retrieve_access_token(conn, id)
-            logger.info("current token: %s", token)
-            conn.close()
-
-            if token is None:
-                logger.info("failed to retrieve access token")
+            query = get_playlist_user(get_db(), channel_id)
+            if query is None or query[0] is None or query[1] is None:
+                logger.info("channel is missing playlist or user")
                 return authentication_request_msg
+
+            playlist_id, user_id = query
+            token = get_access_token(get_db(), user_id)
+            if token is None:
+                logger.info("user is missing token")
+                return authentication_request_msg
+            logger.info("current token: %s", token)            
 
             sp = spotipy.Spotify(token)
             logger.info("authenticated Spotify")
+
+            logger.info(
+                "adding tracks (%s) to user (%s) playlist (%s)",
+                track_ids, user_id, playlist_id)
             sp.user_playlist_add_tracks(
-                playlist_maintainer_username, playlist_id, track_ids)
+                user_id, playlist_id, track_ids)
         except spotipy.client.SpotifyException as error:
             logger.error(
                 "failed to add track(s) to playlist: %s due to %s", track_ids, error)
@@ -79,26 +99,3 @@ def handler(id, link):
 
     else:
         logger.info("did not identify any tracks in: %s", link)
-
-
-# Ideally we'd be able to use different accounts depending on what
-# channel and workspace they're in. This would require authentication
-# through Slack, rather than just through terminal.
-
-# SpotifyClients should be able to provide the proper Spotify client
-# for each channel and workspace.
-class SpotifyClients:
-    def __init__(self):
-        self.clients = dict()
-
-    def get(self, id):
-        if id not in self.clients:
-            self.init(id)
-        return self.clients[id]
-
-    def init(self, id):
-        token = util.prompt_for_user_token(
-            "newmascot",
-            "playlist-modify-public",
-        )
-        self.clients[id] = spotipy.Spotify(token)

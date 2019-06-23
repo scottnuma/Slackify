@@ -1,9 +1,13 @@
-from flask import Blueprint, current_app, redirect, url_for, request, session
+from flask import Blueprint, current_app, redirect, url_for, request, session, render_template
 import sqlite3
+import spotipy
 
-from .spotify_auth import create_spotify_oauth, store_access_token, DB_FILE
+from .spotify_auth import create_spotify_oauth
+from .spotify_database import store_access_token, get_access_token, store_user_id, store_playlist_id, get_db, get_playlist_user
+from .spotify import get_username, get_playlists
 
-spotify_routes = Blueprint('spotifyRoutes', __name__)
+
+spotify_routes = Blueprint('spotifyRoutes', __name__, template_folder='templates')
 
 @spotify_routes.route('/auth/init/<string:id>')
 def authorize(id):
@@ -15,21 +19,61 @@ def authorize(id):
     auth_url = spotify_oauth.get_authorize_url()
     return redirect(auth_url)
 
+@spotify_routes.route('/auth/select_playlist', methods=['GET', 'POST']) 
+def select_playlist():
+    """Displays a bunch of playlists to choose from"""
+    if request.method == "POST":
+        channel_id = session.pop('id')
+        if channel_id is None:
+            return redirect(url_for('spotifyRoutes.failure'))
+        
+        playlist_id = request.form.get('playlist-id')
+        if playlist_id is None:
+            return redirect(url_for('spotifyRoutes.failure'))
+
+        store_playlist_id(get_db(), channel_id, playlist_id)
+
+        return redirect(url_for('spotifyRoutes.success'))
+    
+    channel_id = session.get('id')
+    if channel_id is None:
+        return redirect(url_for('spotifyRoutes.failure'))
+    
+    current_app.logger.info("select playlists for %s", channel_id)
+
+    query = get_playlist_user(get_db(), channel_id)
+    if query is None:
+        return redirect(url_for('spotifyRoutes.failure'))
+    _, spotify_user_id = query
+    token = get_access_token(get_db(), spotify_user_id)
+
+    sp = spotipy.Spotify(token)
+
+    playlists = get_playlists(sp, spotify_user_id)
+    return render_template('select_playlists.html', playlists=playlists)
 
 @spotify_routes.route('/auth/finish')
 def handle_auth():
     """Receive the token from a successful authorization."""
-    id = session.pop('id')
+    channel_id = session.get('id')
+    if channel_id is None:
+        return redirect(url_for('spotifyRoutes.failure'))
+
     current_app.logger.info("handling Spotify auth callback for %s", id)
     spotify_oauth = create_spotify_oauth(id)
 
     try:
         code = spotify_oauth.parse_response_code(request.url)
         token_info = spotify_oauth.get_access_token(code)
-        conn = sqlite3.connect(DB_FILE)
-        store_access_token(conn, id, token_info['access_token'])
-        current_app.logger.info("successfully stored access token")
-        return redirect(url_for('spotifyRoutes.success'))
+        token = token_info['access_token']
+
+        sp = spotipy.Spotify(token)
+        spotify_user_id = get_username(sp)
+        store_user_id(get_db(), channel_id, spotify_user_id)
+        store_access_token(get_db(), spotify_user_id, token)
+        current_app.logger.info("successfully stored access token and username")
+
+        return redirect(url_for('spotifyRoutes.select_playlist'))
     except Exception:
         current_app.logger.exception("Failed to authorize with code from URL")
         return redirect(url_for('spotifyRoutes.failure'))
