@@ -32,6 +32,7 @@ Werkzeug = "==0.14.1"
 pyopenssl = "*"
 
 [dev-packages]
+rope = "*"
 
 [requires]
 python_version = "3.7"
