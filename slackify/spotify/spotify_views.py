@@ -78,6 +78,15 @@ def handle_auth():
         current_app.logger.exception("Failed to authorize with code from URL")
         return redirect(url_for('spotifyRoutes.failure'))
 
+
+@spotify_routes.route('/auth/logout')
+def logout():
+    channel_id = session.pop('id', None)
+    if channel_id is None:
+        return "already logged out"
+    else:
+        return "successfully logged out"
+
 @spotify_routes.route('/auth/success')
 def success():
     # It might be nice to send a message to the Slack channel
