@@ -18,6 +18,7 @@ from .spotify_database import (
     store_playlist_id,
     get_db,
     get_playlist_user,
+    delete_channel,
 )
 from .spotify import get_username, get_playlists
 
@@ -62,10 +63,10 @@ def handle_auth():
 
 
 @spotify_routes.route("/select_playlist/channel_id/<string:channel_id>")
-def set_id_to_select_playlist():
+def set_id_to_select_playlist(channel_id):
     """Sets channel_id and redirects to select_playlist"""
-    session["id"] = id
-    current_app.logger.info("set id to %s or selecting playlist", id)
+    session["id"] = channel_id
+    current_app.logger.info("set id to %s or selecting playlist", channel_id)
     return redirect(url_for("spotifyRoutes.select_playlist"))
 
 
@@ -103,7 +104,16 @@ def select_playlist():
     return render_template("select_playlists.html", playlists=playlists)
 
 
-@spotify_routes.route("/auth/logout")
+@spotify_routes.route("/unlink/<string:channel_id>")
+def unlink(channel_id):
+    """Disassociates a channel and a playlist"""
+    # This is probably in need of protections from abuse
+    # such as one-time only links, anti CSRF, etc.
+    delete_channel(get_db(), channel_id)
+    return redirect(url_for("spotifyRoutes.success"))
+
+
+@spotify_routes.route("/logout")
 def logout():
     channel_id = session.pop("id", None)
     if channel_id is None:
