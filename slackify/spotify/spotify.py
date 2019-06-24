@@ -15,6 +15,7 @@ PLAYLIST_SELECT_URL = "https://{}/select_playlist/channel_id/".format(BASE_URL)
 playlist_selct_msg = "Please select the playlist to connect: {}{}"
 ADD_SUCCESS = "success"
 
+
 def handler(channel_id, link):
     """
     Add the track in link to the playlist associated with channel_id.
@@ -26,9 +27,9 @@ def handler(channel_id, link):
     """
     logger.info("handling link: %s", link)
     logger.info("received from: %s", channel_id)
- 
+
     authentication_request_msg = authentication_request_template.format(
-        SPOTIFY_AUTH_URL,channel_id)
+        SPOTIFY_AUTH_URL, channel_id)
 
     text = link.get('url')
     if not text:
@@ -49,14 +50,14 @@ def handler(channel_id, link):
             # If the playlist has not been selected
             if query[1] is None:
                 return playlist_selct_msg.format(
-                    PLAYLIST_SELECT_URL,channel_id)
+                    PLAYLIST_SELECT_URL, channel_id)
 
             playlist_id, user_id = query
             token = get_access_token(get_db(), user_id)
             if token is None:
                 logger.info("user is missing token")
                 return authentication_request_msg
-            logger.info("current token: %s", token)            
+            logger.info("current token: %s", token)
 
             sp = spotipy.Spotify(token)
             logger.info("authenticated Spotify")
@@ -80,12 +81,14 @@ def handler(channel_id, link):
     else:
         logger.info("did not identify any tracks in: %s", link)
 
+
 def find_ids(msg):
     """Pull the id of a track from its URL."""
     result = re.search(r"https://open\.spotify\.com/track/(\w+)", msg)
     if not result:
         return []
     return result.groups()
+
 
 def get_username(sp):
     """Get the username from a login"""
@@ -95,6 +98,7 @@ def get_username(sp):
     logger.info("got username: %s", username)
     return username
 
+
 def get_playlists(sp, username):
     """Get a list of playlist (name, id)"""
     playlists = sp.user_playlists(username, limit=10)['items']
@@ -102,5 +106,3 @@ def get_playlists(sp, username):
         (playlist['name'], playlist['id']) for playlist in playlists]
     logger.info("%s playlists: %s", username, formatted_playlists)
     return formatted_playlists
-
-

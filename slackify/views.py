@@ -2,6 +2,7 @@ from flask import Blueprint, current_app
 
 basics = Blueprint('simplepage', __name__, template_folder='templates')
 
+
 @basics.route('/healthcheck')
 def healthy():
     """Provide quick affirmation of that the server is online"""

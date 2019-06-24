@@ -10,12 +10,12 @@ cur.execute("""CREATE TABLE playlist_info (
     playlist_id TEXT,
     spotify_user_id TEXT
     );"""
-)
+            )
 
 cur.execute("""CREATE TABLE user_auth (
-    spotify_user_id TEXT PRIMARY KEY,
+    spotifwy_user_id TEXT PRIMARY KEY,
     token TEXT NOT NULL
     );"""
-)
+            )
 conn.commit()
 conn.close()

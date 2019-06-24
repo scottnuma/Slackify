@@ -8,7 +8,9 @@ from .spotify_database import store_access_token, get_access_token, store_user_i
 from .spotify import get_username, get_playlists
 
 
-spotify_routes = Blueprint('spotifyRoutes', __name__, template_folder='templates')
+spotify_routes = Blueprint('spotifyRoutes', __name__,
+                           template_folder='templates')
+
 
 @spotify_routes.route('/auth/init/<string:id>')
 def authorize(id):
@@ -17,6 +19,7 @@ def authorize(id):
     spotify_oauth = create_spotify_oauth(id)
     auth_url = spotify_oauth.get_authorize_url()
     return redirect(auth_url)
+
 
 @spotify_routes.route('/auth/finish')
 def handle_auth():
@@ -37,12 +40,14 @@ def handle_auth():
         spotify_user_id = get_username(sp)
         store_user_id(get_db(), channel_id, spotify_user_id)
         store_access_token(get_db(), spotify_user_id, token)
-        current_app.logger.info("successfully stored access token and username")
+        current_app.logger.info(
+            "successfully stored access token and username")
 
         return redirect(url_for('spotifyRoutes.select_playlist'))
     except Exception:
         current_app.logger.exception("Failed to authorize with code from URL")
         return redirect(url_for('spotifyRoutes.failure'))
+
 
 @spotify_routes.route('/select_playlist/channel_id/<string:channel_id>')
 def set_id_to_select_playlist():
@@ -51,7 +56,8 @@ def set_id_to_select_playlist():
     current_app.logger.info("set id to %s or selecting playlist", id)
     return redirect(url_for('spotifyRoutes.select_playlist'))
 
-@spotify_routes.route('/select_playlist', methods=['GET', 'POST']) 
+
+@spotify_routes.route('/select_playlist', methods=['GET', 'POST'])
 def select_playlist():
     """Displays a bunch of playlists to choose from"""
     if request.method == "POST":
@@ -64,11 +70,11 @@ def select_playlist():
 
         store_playlist_id(get_db(), channel_id, playlist_id)
         return redirect(url_for('spotifyRoutes.success'))
-    
+
     channel_id = session.get('id')
     if channel_id is None:
         return redirect(url_for('spotifyRoutes.failure'))
-    
+
     current_app.logger.info("select playlists for %s", channel_id)
 
     query = get_playlist_user(get_db(), channel_id)
@@ -93,11 +99,13 @@ def logout():
     else:
         return "successfully logged out"
 
+
 @spotify_routes.route('/auth/success')
 def success():
     # It might be nice to send a message to the Slack channel
     # indicating that the account has been linked
     return 'success'
+
 
 @spotify_routes.route("/auth/failure")
 def failure():

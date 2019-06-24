@@ -6,10 +6,9 @@ import spotipy
 import spotipy.util as util
 import spotipy.oauth2 as oauth2
 
-SCOPE="playlist-modify-public"
+SCOPE = "playlist-modify-public"
 
 logger = logging.getLogger(__name__)
-
 
 
 def create_spotify_oauth(id):
@@ -21,7 +20,7 @@ def create_spotify_oauth(id):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
     cache_path = "{}/cache-{}".format(cache_dir, id)
-    
-    spotify_oauth = oauth2.SpotifyOAuth(client_id, client_secret, redirect_uri, 
-        scope=SCOPE, cache_path=cache_path)
+
+    spotify_oauth = oauth2.SpotifyOAuth(client_id, client_secret, redirect_uri,
+                                        scope=SCOPE, cache_path=cache_path)
     return spotify_oauth

@@ -3,6 +3,7 @@ import sqlite3
 
 import slackify
 
+
 class TestTokenMethods(unittest.TestCase):
     test_database_file = "tests/test_tokens.db"
     conn = None
@@ -24,15 +25,19 @@ class TestTokenMethods(unittest.TestCase):
         cur = conn.cursor()
         cur.execute(sql_query)
         conn.commit()
-                
 
     def test_store_and_retrieve(self):
         conn = sqlite3.connect(self.test_database_file)
         test_token = "test_access_token"
         test_id = "test_id"
-        self.assertEqual(1, slackify.spotify.store_access_token(conn, test_id, test_token))
-        self.assertEqual(test_token, slackify.spotify.retrieve_access_token(conn, test_id))
-        self.assertEqual(None, slackify.spotify.retrieve_access_token(conn, "random_id"))
+        self.assertEqual(1, slackify.spotify.store_access_token(
+            conn, test_id, test_token))
+        self.assertEqual(
+
+            test_token, slackify.spotify.spotify_database.get_access_token(conn, test_id))
+        self.assertEqual(
+            None, slackify.spotify.spotify_database.get_access_token(conn, "random_id"))
+
 
 if __name__ == "__main__":
     unittest.main()

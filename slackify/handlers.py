@@ -72,4 +72,3 @@ def domain_handler(id, links):
         handler_feedback.append(domain_handlers[domain](id, link))
 
     return handler_feedback
-
