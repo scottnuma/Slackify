@@ -21,6 +21,7 @@ if not SLACK_VERIFICATION_TOKEN:
 
 ENVIRONMENT = os.getenv("SLACK_MUSIC_ENVIRONMENT", "prod")
 
+
 def process_queue(sc, q):
     """Clear tasks from the queue.
 
@@ -31,20 +32,20 @@ def process_queue(sc, q):
     while True:
         event = q.get()
 
-        if SLACK_VERIFICATION_TOKEN != event.get('token'):
+        if SLACK_VERIFICATION_TOKEN != event.get("token"):
             logger.warning("event failed verification")
             q.task_done()
             continue
 
-        slack_event = event['event']
-        id = generate_id(event['team_id'], slack_event['channel'])
+        slack_event = event["event"]
+        id = generate_id(event["team_id"], slack_event["channel"])
         handle_event(sc, slack_event, id)
         q.task_done()
 
 
 def handle_event(sc, slack_event, id):
     """Handle event with respective handler."""
-    event_type = slack_event['type']
+    event_type = slack_event["type"]
     if event_type == "app_mention":
         handle_app_mention(sc, slack_event, id)
     elif event_type == "link_shared":
@@ -69,16 +70,16 @@ def create_app():
 
     threads_num = 3
     for i in range(threads_num):
-        t = threading.Thread(name="Consumer-"+str(i),
-                             target=process_queue, args=(sc, q,))
+        t = threading.Thread(
+            name="Consumer-" + str(i), target=process_queue, args=(sc, q)
+        )
         t.start()
 
     SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
     if not SLACK_SIGNING_SECRET:
         logger.exception("SLACK_SIGNING_SECRET environment variable not found")
-        
-    slack_events_adapter = SlackEventAdapter(
-        SLACK_SIGNING_SECRET, "/api/v1/music", app)
+
+    slack_events_adapter = SlackEventAdapter(SLACK_SIGNING_SECRET, "/api/v1/music", app)
 
     @slack_events_adapter.on("app_mention")
     def on_app_mention(event):
@@ -88,13 +89,12 @@ def create_app():
         app.logger.info("sending 200")
         return Response(), 200
 
-
     @slack_events_adapter.on("link_shared")
     def slack_music_link_handler(event):
         """Pass link events to their respective handlers and respond."""
         app.logger.info("received event: %s", event)
         q.put(event)
         app.logger.info("sending 200")
-        return Response(), 200  
+        return Response(), 200
 
     return app
