@@ -16,11 +16,10 @@ def init_logger():
     logger.setLevel(logging.DEBUG)
 
     # create formatter and add it to the handlers
-    formatter = logging.Formatter(
-        '%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s')
+    formatter = logging.Formatter("%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s")
 
     # create file handler which logs even debug messages
-    fh = logging.FileHandler('slack_spotify_playlist.log')
+    fh = logging.FileHandler("slack_spotify_playlist.log")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
@@ -41,5 +40,5 @@ def generate_id(team_id, channel):
     Returns a hex string
     """
     dev_id = "github.com/scottnuma"
-    combined = '-'.join([dev_id, team_id, channel, ID_SECRET_KEY])
+    combined = "-".join([dev_id, team_id, channel, ID_SECRET_KEY])
     return hashlib.sha224(combined.encode("utf-8")).digest().hex()

@@ -29,9 +29,10 @@ def handler(channel_id, link):
     logger.info("received from: %s", channel_id)
 
     authentication_request_msg = authentication_request_template.format(
-        SPOTIFY_AUTH_URL, channel_id)
+        SPOTIFY_AUTH_URL, channel_id
+    )
 
-    text = link.get('url')
+    text = link.get("url")
     if not text:
         logger.info("no URL found")
         return
@@ -49,8 +50,7 @@ def handler(channel_id, link):
 
             # If the playlist has not been selected
             if query[1] is None:
-                return playlist_selct_msg.format(
-                    PLAYLIST_SELECT_URL, channel_id)
+                return playlist_selct_msg.format(PLAYLIST_SELECT_URL, channel_id)
 
             playlist_id, user_id = query
             token = get_access_token(get_db(), user_id)
@@ -64,18 +64,20 @@ def handler(channel_id, link):
 
             logger.info(
                 "adding tracks (%s) to user (%s) playlist (%s)",
-                track_ids, user_id, playlist_id)
-            sp.user_playlist_add_tracks(
-                user_id, playlist_id, track_ids)
+                track_ids,
+                user_id,
+                playlist_id,
+            )
+            sp.user_playlist_add_tracks(user_id, playlist_id, track_ids)
         except spotipy.client.SpotifyException as error:
             logger.error(
-                "failed to add track(s) to playlist: %s due to %s", track_ids, error)
+                "failed to add track(s) to playlist: %s due to %s", track_ids, error
+            )
             if error.http_status == 401:
                 return authentication_request_msg
             return "Hmm I wasn't able to add a track to the playlist"
         else:
-            logger.info(
-                "successfully added track(s) to playlist: %s", track_ids)
+            logger.info("successfully added track(s) to playlist: %s", track_ids)
             return ADD_SUCCESS
 
     else:
@@ -94,15 +96,14 @@ def get_username(sp):
     """Get the username from a login"""
     logger.info("authenticated Spotify")
     current_user_info = sp.current_user()
-    username = current_user_info['id']
+    username = current_user_info["id"]
     logger.info("got username: %s", username)
     return username
 
 
 def get_playlists(sp, username):
     """Get a list of playlist (name, id)"""
-    playlists = sp.user_playlists(username, limit=10)['items']
-    formatted_playlists = [
-        (playlist['name'], playlist['id']) for playlist in playlists]
+    playlists = sp.user_playlists(username, limit=10)["items"]
+    formatted_playlists = [(playlist["name"], playlist["id"]) for playlist in playlists]
     logger.info("%s playlists: %s", username, formatted_playlists)
     return formatted_playlists

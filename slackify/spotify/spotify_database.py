@@ -3,7 +3,7 @@ import sqlite3
 
 from flask import current_app
 
-DATABASE = 'spotify.db'
+DATABASE = "spotify.db"
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +18,14 @@ def store_access_token(conn, spotify_user_id, access_token):
     cur = conn.cursor()
     try:
         cur.execute(
-            '''INSERT INTO user_auth (spotify_user_id, token) VALUES(?,?)''',
-            (spotify_user_id, access_token))
+            """INSERT INTO user_auth (spotify_user_id, token) VALUES(?,?)""",
+            (spotify_user_id, access_token),
+        )
     except sqlite3.IntegrityError:
         cur.execute(
-            ''' UPDATE user_auth SET token = ? WHERE spotify_user_id = ?''',
-            (access_token, spotify_user_id))
+            """ UPDATE user_auth SET token = ? WHERE spotify_user_id = ?""",
+            (access_token, spotify_user_id),
+        )
     conn.commit()
     return cur.lastrowid
 
@@ -55,7 +57,8 @@ def get_playlist_user(conn, channel_id):
     cur = conn.cursor()
     cur.execute(
         "SELECT playlist_id, spotify_user_id FROM playlist_info WHERE channel_id=?",
-        (channel_id,))
+        (channel_id,),
+    )
     rows = cur.fetchall()
 
     if len(rows) == 0:
@@ -70,12 +73,13 @@ def store_user_id(conn, channel_id, spotify_user_id):
     try:
         cur.execute(
             """INSERT INTO playlist_info (channel_id, spotify_user_id) VALUES (?,?)""",
-            (channel_id, spotify_user_id)
+            (channel_id, spotify_user_id),
         )
     except sqlite3.IntegrityError:
         cur.execute(
-            ''' UPDATE playlist_info SET spotify_user_id = ? WHERE channel_id = ?''',
-            (spotify_user_id, channel_id))
+            """ UPDATE playlist_info SET spotify_user_id = ? WHERE channel_id = ?""",
+            (spotify_user_id, channel_id),
+        )
     conn.commit()
 
 
@@ -84,10 +88,11 @@ def store_playlist_id(conn, channel_id, playlist_id):
     try:
         cur.execute(
             """INSERT INTO playlist_info (channel_id, playlist_id) VALUES (?,?)""",
-            (channel_id, playlist_id)
+            (channel_id, playlist_id),
         )
     except sqlite3.IntegrityError:
         cur.execute(
-            ''' UPDATE playlist_info SET playlist_id = ? WHERE channel_id = ?''',
-            (playlist_id, channel_id))
+            """ UPDATE playlist_info SET playlist_id = ? WHERE channel_id = ?""",
+            (playlist_id, channel_id),
+        )
     conn.commit()
