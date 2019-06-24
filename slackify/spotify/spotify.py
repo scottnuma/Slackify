@@ -1,45 +1,19 @@
 import logging
 import re
-import sqlite3
 
 import spotipy
-import spotipy.util as util
-from flask import Flask, Response, jsonify, request
 
 from .spotify_database import get_db, get_playlist_user, get_access_token
 
 
 logger = logging.getLogger(__name__)
 
-SPOTIFY_AUTH_URL = "https://newma.localtunnel.me/spotify/auth/init/"
+BASE_URL = "newma.localtunnel.me"
+SPOTIFY_AUTH_URL = "https://{}/spotify/auth/init/".format(BASE_URL)
 authentication_request_template = "Link your playlist to this channel: {}{}"
-
+PLAYLIST_SELECT_URL = "https://{}/select_playlist/channel_id/".format(BASE_URL)
+playlist_selct_msg = "Please select the playlist to connect: {}{}"
 ADD_SUCCESS = "success"
-
-
-def find_ids(msg):
-    """Pull the id of a track from its URL."""
-    result = re.search(r"https://open\.spotify\.com/track/(\w+)", msg)
-    if not result:
-        return []
-    return result.groups()
-
-def get_username(sp):
-    """Get the username from a login"""
-    logger.info("authenticated Spotify")
-    current_user_info = sp.current_user()
-    username = current_user_info['id']
-    logger.info("got username: %s", username)
-    return username
-
-def get_playlists(sp, username):
-    """Get a list of playlist (name, id)"""
-    playlists = sp.user_playlists(username, limit=10)['items']
-    formatted_playlists = [
-        (playlist['name'], playlist['id']) for playlist in playlists]
-    logger.info("%s playlists: %s", username, formatted_playlists)
-    return formatted_playlists
-
 
 def handler(channel_id, link):
     """
@@ -53,7 +27,8 @@ def handler(channel_id, link):
     logger.info("handling link: %s", link)
     logger.info("received from: %s", channel_id)
  
-    authentication_request_msg = authentication_request_template.format(SPOTIFY_AUTH_URL,channel_id)
+    authentication_request_msg = authentication_request_template.format(
+        SPOTIFY_AUTH_URL,channel_id)
 
     text = link.get('url')
     if not text:
@@ -67,9 +42,14 @@ def handler(channel_id, link):
         try:
             logger.info("attempting Spotify authentication")
             query = get_playlist_user(get_db(), channel_id)
-            if query is None or query[0] is None or query[1] is None:
+            if query is None or query[0] is None:
                 logger.info("channel is missing playlist or user")
                 return authentication_request_msg
+
+            # If the playlist has not been selected
+            if query[1] is None:
+                return playlist_selct_msg.format(
+                    PLAYLIST_SELECT_URL,channel_id)
 
             playlist_id, user_id = query
             token = get_access_token(get_db(), user_id)
@@ -99,3 +79,28 @@ def handler(channel_id, link):
 
     else:
         logger.info("did not identify any tracks in: %s", link)
+
+def find_ids(msg):
+    """Pull the id of a track from its URL."""
+    result = re.search(r"https://open\.spotify\.com/track/(\w+)", msg)
+    if not result:
+        return []
+    return result.groups()
+
+def get_username(sp):
+    """Get the username from a login"""
+    logger.info("authenticated Spotify")
+    current_user_info = sp.current_user()
+    username = current_user_info['id']
+    logger.info("got username: %s", username)
+    return username
+
+def get_playlists(sp, username):
+    """Get a list of playlist (name, id)"""
+    playlists = sp.user_playlists(username, limit=10)['items']
+    formatted_playlists = [
+        (playlist['name'], playlist['id']) for playlist in playlists]
+    logger.info("%s playlists: %s", username, formatted_playlists)
+    return formatted_playlists
+
+
