@@ -17,17 +17,40 @@ def handle_app_mention(slack_client, message, channel_id):
         text = message.get("text")
         if "hi" in text:
             logger.info("responding to message from %s", message["user"])
-            response = ":notes:hi <@%s> :notes:" % message["user"]
+            response = ":notes:hi <@{}> :notes:".format(message["user"])
             slack_client.api_call(
                 "chat.postMessage",
                 channel=message["channel"],
                 text=response,
                 thread_ts=message["event_ts"],
             )
-        if "register channel" in text:
+            return
+
+        if "link" in text:
             logger.info(
-                "registering channel %s for %s", channel_id.hex(), message["user"]
+                "responding to %s for linking channel %s", message["user"], channel_id
             )
+            response = "Follow this link to link this channel: {}".format("[LINK TBD]")
+
+        if "unlink" in text:
+            logger.info("responding to unlink request")
+            response = "Follow this link to unlink this channel: {}".format(
+                "[LINK TBD]"
+            )
+        slack_client.api_call(
+            "chat.postEphemeral",
+            channel=message["channel"],
+            text=response,
+            user=message["user"],
+        )
+        slack_client.api_call(
+            "reactions.add",
+            channel=message["channel"],
+            name="notes",
+            timestamp=message["event_ts"],
+        )
+        return
+
     else:
         logger.info("ignoring mention")
 
@@ -40,9 +63,9 @@ def link_handler(slack_client, slack_event, id):
             perfect_results = False
             slack_client.api_call(
                 "chat.postMessage",
-                channel=slack_event.get("channel"),
+                channel=slack_event["channel"],
                 text=result,
-                thread_ts=slack_event.get("message_ts"),
+                thread_ts=slack_event["message_ts"],
             )
 
     if perfect_results:
