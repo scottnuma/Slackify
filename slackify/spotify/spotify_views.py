@@ -6,6 +6,7 @@ from flask import (
     request,
     session,
     render_template,
+    flash,
 )
 import sqlite3
 import spotipy
@@ -21,6 +22,7 @@ from .spotify_database import (
     delete_channel,
 )
 from .spotify import get_username, get_playlists
+from .playlist_form import PlaylistForm
 
 
 spotify_routes = Blueprint("spotifyRoutes", __name__, template_folder="templates")
@@ -73,17 +75,6 @@ def set_id_to_select_playlist(channel_id):
 @spotify_routes.route("/select_playlist", methods=["GET", "POST"])
 def select_playlist():
     """Displays a bunch of playlists to choose from"""
-    if request.method == "POST":
-        try:
-            # Discard the channel id
-            channel_id = session.pop("id")
-            playlist_id = request.form["playlist-id"]
-        except KeyError:
-            return redirect(url_for("spotifyRoutes.failure"))
-
-        store_playlist_id(get_db(), channel_id, playlist_id)
-        return redirect(url_for("spotifyRoutes.success"))
-
     channel_id = session.get("id")
     if channel_id is None:
         return redirect(url_for("spotifyRoutes.failure"))
@@ -92,16 +83,28 @@ def select_playlist():
 
     query = get_playlist_user(get_db(), channel_id)
     if query is None:
-        return redirect(url_for("spotifyRoutes.failure"))
-    _, spotify_user_id = query
+        return redirect(url_for("spotifyRoutes.authorize", id=channel_id))
+    spotify_user_id = query[1]
     token = get_access_token(get_db(), spotify_user_id)
     if token is None:
-        return redirect(url_for("spotifyRoutes.failure"))
+        return redirect(url_for("spotifyRoutes.authorize", id=channel_id))
 
     sp = spotipy.Spotify(token)
 
-    playlists = get_playlists(sp, spotify_user_id)
-    return render_template("select_playlists.html", playlists=playlists)
+    form = PlaylistForm()
+    form.playlist_id.choices = get_playlists(sp, spotify_user_id)
+
+    if request.method == "POST":
+        if not form.validate():
+            flash("Please select a playlist.")
+            return render_template("select_playlist.html", form=form)
+        current_app.logger.info("chose playlist: %s", form.playlist_id.data)
+        store_playlist_id(get_db(), channel_id, form.playlist_id.data)
+        if "id" in session:
+            session.pop("id")
+        return redirect(url_for("spotifyRoutes.success"))
+
+    return render_template("select_playlist.html", form=form)
 
 
 @spotify_routes.route("/unlink/<string:channel_id>")

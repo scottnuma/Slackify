@@ -104,6 +104,6 @@ def get_username(sp):
 def get_playlists(sp, username):
     """Get a list of playlist (name, id)"""
     playlists = sp.user_playlists(username, limit=10)["items"]
-    formatted_playlists = [(playlist["name"], playlist["id"]) for playlist in playlists]
+    formatted_playlists = [(playlist["id"], playlist["name"]) for playlist in playlists]
     logger.info("%s playlists: %s", username, formatted_playlists)
     return formatted_playlists

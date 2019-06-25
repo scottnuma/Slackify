@@ -32,6 +32,7 @@ Werkzeug = "==0.14.1"
 pyopenssl = "*"
 gunicorn = "*"
 python-dotenv = "*"
+flask-wtf = "*"
 
 [dev-packages]
 rope = "*"
