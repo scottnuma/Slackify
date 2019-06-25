@@ -2,11 +2,9 @@ import logging
 import hashlib
 import os
 
-logger = logging.getLogger(__name__)
+from .settings import Config
 
-ID_SECRET_KEY = os.environ.get("SLACK_ID_KEY")
-if not ID_SECRET_KEY:
-    logger.warning("SLACK_ID_KEY environment variable not found")
+logger = logging.getLogger(__name__)
 
 
 def init_logger():
@@ -40,5 +38,5 @@ def generate_id(team_id, channel):
     Returns a hex string
     """
     dev_id = "github.com/scottnuma"
-    combined = "-".join([dev_id, team_id, channel, ID_SECRET_KEY])
+    combined = "-".join([dev_id, team_id, channel, Config.SLACK_ID_KEY])
     return hashlib.sha224(combined.encode("utf-8")).digest().hex()

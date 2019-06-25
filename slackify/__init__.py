@@ -1,5 +1,4 @@
 import logging
-
 import queue
 import threading
 
@@ -11,15 +10,10 @@ from .util import *
 from .views import *
 from .handlers import handle_app_mention, link_handler
 from .spotify import spotify_views
+from .settings import Config
+
 
 logger = init_logger()
-
-# Initialize configuration variables
-SLACK_VERIFICATION_TOKEN = os.environ.get("SLACK_VERIFICATION_TOKEN")
-if not SLACK_VERIFICATION_TOKEN:
-    logger.warning("SLACK_VERIFICATION_TOKEN environment variable not found")
-
-ENVIRONMENT = os.getenv("SLACK_MUSIC_ENVIRONMENT", "prod")
 
 
 def process_queue(sc, q):
@@ -32,7 +26,7 @@ def process_queue(sc, q):
     while True:
         event = q.get()
 
-        if SLACK_VERIFICATION_TOKEN != event.get("token"):
+        if Config.SLACK_VERIFICATION_TOKEN != event.get("token"):
             logger.warning("event failed verification")
             q.task_done()
             continue
@@ -58,13 +52,9 @@ def create_app():
     app = Flask(__name__)
     app.register_blueprint(basics)
     app.register_blueprint(spotify_views.spotify_routes, url_prefix="/spotify")
-    app.secret_key = os.environ["FLASK_SESSION_KEY"]
+    app.secret_key = Config.FLASK_SESSION_KEY
 
-    SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
-    if not SLACK_BOT_TOKEN:
-        logger.exception("SLACK_BOT_TOKEN environment variable not found")
-
-    sc = SlackClient(SLACK_BOT_TOKEN)
+    sc = SlackClient(Config.SLACK_BOT_TOKEN)
 
     q = queue.Queue()
 
@@ -75,11 +65,9 @@ def create_app():
         )
         t.start()
 
-    SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
-    if not SLACK_SIGNING_SECRET:
-        logger.exception("SLACK_SIGNING_SECRET environment variable not found")
-
-    slack_events_adapter = SlackEventAdapter(SLACK_SIGNING_SECRET, "/api/v1/music", app)
+    slack_events_adapter = SlackEventAdapter(
+        Config.SLACK_SIGNING_SECRET, "/api/v1/music", app
+    )
 
     @slack_events_adapter.on("app_mention")
     def on_app_mention(event):

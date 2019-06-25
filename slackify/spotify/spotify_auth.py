@@ -6,15 +6,17 @@ import spotipy
 import spotipy.util as util
 import spotipy.oauth2 as oauth2
 
+from slackify.settings import Config
+
 SCOPE = "playlist-modify-public"
 
 logger = logging.getLogger(__name__)
 
 
 def create_spotify_oauth(id):
-    client_id = os.environ["SPOTIPY_CLIENT_ID"]
-    client_secret = os.environ["SPOTIPY_CLIENT_SECRET"]
-    redirect_uri = os.environ["SPOTIPY_REDIRECT_URI"]
+    client_id = Config.SPOTIPY_CLIENT_ID
+    client_secret = Config.SPOTIPY_CLIENT_SECRET
+    redirect_uri = Config.SPOTIPY_REDIRECT_URI
 
     cache_dir = "caches"
     if not os.path.exists(cache_dir):
