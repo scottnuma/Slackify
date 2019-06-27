@@ -1,6 +1,7 @@
 .vscode
 venv
 .cache-*
+.env
 caches/
 spotify-env
 __pycache__
