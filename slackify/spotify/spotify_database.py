@@ -1,5 +1,7 @@
 import logging
 import sqlite3
+import secrets
+import datetime
 
 from flask import current_app
 
@@ -124,3 +126,43 @@ def delete_channel(conn, channel_id):
 
     cur.commit()
     return
+
+
+def generate_token(conn, channel_id):
+    """Generates and saves a one time token"""
+    token = secrets.token_hex()
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO one_time_links (channel_id, token, timestamp) VALUES (?, ?, ?);",
+        (channel_id, token, datetime.datetime.now()),
+    )
+    conn.commit()
+    return token
+
+
+def verify_token(conn, channel_id, token):
+    """
+    Returns whether a token is valid
+
+    If the token is valid, removes the token from memory.
+    """
+    valid_period = datetime.timedelta(days=1)
+    yesterday = datetime.datetime.now() - valid_period
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT timestamp FROM one_time_links WHERE channel_id = ? AND token = ? AND timestamp > ?;",
+        (channel_id, token, yesterday),
+    )
+    rows = cur.fetchall()
+    if len(rows) == 0:
+        return False
+
+    # Mark the token as invalid after use
+    cur.execute(
+        "DELETE FROM one_time_links WHERE channel_id = ? AND token = ? AND timestamp > ?;",
+        (channel_id, token, yesterday),
+    )
+    conn.commit()
+
+    return True

@@ -1,23 +1,11 @@
 import sqlite3
+import os
 
+CURR_DIR = os.path.dirname(os.path.abspath(__file__))
+SCHEMA_FILE = "/".join([CURR_DIR, "schema.sql"])
 DB_FILE = "spotify.db"
 
 conn = sqlite3.connect(DB_FILE)
-cur = conn.cursor()
-
-cur.execute(
-    """CREATE TABLE playlist_info (
-    channel_id TEXT PRIMARY KEY,
-    playlist_id TEXT,
-    spotify_user_id TEXT
-    );"""
-)
-
-cur.execute(
-    """CREATE TABLE user_auth (
-    spotifwy_user_id TEXT PRIMARY KEY,
-    token TEXT NOT NULL
-    );"""
-)
-conn.commit()
+with open(SCHEMA_FILE) as schema_file:
+    conn.executescript(schema_file.read())
 conn.close()
