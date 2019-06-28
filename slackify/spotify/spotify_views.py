@@ -20,16 +20,24 @@ from .spotify_database import (
     get_db,
     get_playlist_user,
     delete_channel,
+    verify_token,
 )
 from .spotify import get_username, get_playlists
 from .playlist_form import PlaylistForm
+from ..settings import Config
 
 
 spotify_routes = Blueprint("spotifyRoutes", __name__, template_folder="templates")
 
 
-@spotify_routes.route("/auth/init/<string:id>")
-def authorize(id):
+@spotify_routes.route("/link/<string:id>/<string:token>")
+def authorize(id, token):
+    if not verify_token(get_db(), id, token):
+        if Config.ENVIRONMENT == "development":
+            current_app.logger.info("Skipping invalid token")
+        else:
+            return redirect(url_for("spotifyRoutes.failure"))
+
     session["id"] = id
     current_app.logger.info("authorizing %s", id)
     spotify_oauth = create_spotify_oauth(id)
@@ -62,14 +70,6 @@ def handle_auth():
     except Exception:
         current_app.logger.exception("Failed to authorize with code from URL")
         return redirect(url_for("spotifyRoutes.failure"))
-
-
-@spotify_routes.route("/select_playlist/channel_id/<string:channel_id>")
-def set_id_to_select_playlist(channel_id):
-    """Sets channel_id and redirects to select_playlist"""
-    session["id"] = channel_id
-    current_app.logger.info("set id to %s or selecting playlist", channel_id)
-    return redirect(url_for("spotifyRoutes.select_playlist"))
 
 
 @spotify_routes.route("/select_playlist", methods=["GET", "POST"])

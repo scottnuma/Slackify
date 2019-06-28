@@ -6,6 +6,7 @@ Distributes work to specific domain handlers, such as Spotify
 
 import logging
 from . import spotify
+from .settings import Config
 
 logger = logging.getLogger(__name__)
 domain_handlers = {"open.spotify.com": spotify.handler}
@@ -30,7 +31,11 @@ def handle_app_mention(slack_client, message, channel_id):
             logger.info(
                 "responding to %s for linking channel %s", message["user"], channel_id
             )
-            response = "Follow this link to link this channel: {}".format("[LINK TBD]")
+            token = spotify.spotify_database.generate_token(
+                spotify.spotify_database.get_db(), channel_id
+            )
+            link = "/".join([Config.BASE_URL, "spotify/link", channel_id, token])
+            response = "Follow this link to link this channel: {}".format(link)
 
         if "unlink" in text:
             logger.info("responding to unlink request")
