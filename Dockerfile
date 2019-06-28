@@ -7,6 +7,5 @@ RUN pipenv sync
 
 ADD . /app
 
-ENTRYPOINT ["pipenv", "run", "flask", "run"]
-CMD ["--host", "0.0.0.0", \
-     "--port", "5000"]
+ENTRYPOINT ["pipenv", "run", "gunicorn"]
+CMD ["-c", "gunicorn_config.py", "main:app"]
