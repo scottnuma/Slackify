@@ -156,6 +156,12 @@ def verify_token(conn, channel_id, token):
     )
     rows = cur.fetchall()
     if len(rows) == 0:
+        logger.info(
+            "failed to verify token, %s, for channel, %s, after %s",
+            token,
+            channel_id,
+            yesterday,
+        )
         return False
 
     # Mark the token as invalid after use
@@ -164,5 +170,6 @@ def verify_token(conn, channel_id, token):
         (channel_id, token, yesterday),
     )
     conn.commit()
+    logger.info("verified token %s", token)
 
     return True
