@@ -8,6 +8,7 @@ import logging
 from . import spotify
 from .settings import Config
 
+
 logger = logging.getLogger(__name__)
 domain_handlers = {"open.spotify.com": spotify.handler}
 
@@ -65,10 +66,16 @@ def handle_app_mention(slack_client, message, channel_id):
     logger.info('saw mention but found no key words in "%s"', text)
 
 
-def link_handler(slack_client, slack_event, id):
+def link_handler(slack_client, slack_event, channel_id):
     """Pass link events to their respective handlers and respond."""
+    if not spotify.spotify_database.contains_channel(
+        spotify.spotify_database.get_db(), channel_id
+    ):
+        logger.info("ignoring message as channel not recognized")
+        return
+
     perfect_results = True
-    for result in domain_handler(id, slack_event.get("links")):
+    for result in domain_handler(channel_id, slack_event.get("links")):
         if result != spotify.ADD_SUCCESS:
             perfect_results = False
             slack_client.api_call(

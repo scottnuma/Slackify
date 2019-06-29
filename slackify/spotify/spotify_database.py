@@ -54,6 +54,18 @@ def get_access_token(conn, spotify_user_id):
     return token
 
 
+def contains_channel(conn, channel_id):
+    """Return if a channel is in the database"""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT channel_id FROM playlist_info WHERE channel_id=?", (channel_id,)
+    )
+    rows = cur.fetchall()
+    logger.info("found %s mentions of %s in playlist_info", len(rows), channel_id)
+
+    return len(rows) > 0
+
+
 def get_playlist_user(conn, channel_id):
     """Get (playlist id, spotify user id) for a channel"""
     cur = conn.cursor()
