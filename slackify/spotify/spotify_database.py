@@ -124,7 +124,7 @@ def delete_channel(conn, channel_id):
     if len(rows) == 0:
         cur.execute("DELETE FROM user_auth WHERE spotify_user_id=?", (user_id,))
 
-    cur.commit()
+    conn.commit()
     return
 
 

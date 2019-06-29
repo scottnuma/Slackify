@@ -107,12 +107,16 @@ def select_playlist():
     return render_template("select_playlist.html", form=form)
 
 
-@spotify_routes.route("/unlink/<string:channel_id>")
-def unlink(channel_id):
+@spotify_routes.route("/unlink/<string:channel_id>/<string:token>")
+def unlink(channel_id, token):
     """Disassociates a channel and a playlist"""
-    # This is probably in need of protections from abuse
-    # such as one-time only links, anti CSRF, etc.
+    if not verify_token(get_db(), channel_id, token):
+        if Config.ENVIRONMENT == "development":
+            current_app.logger.info("Skipping invalid token")
+        else:
+            return redirect(url_for("spotifyRoutes.failure"))
     delete_channel(get_db(), channel_id)
+    current_app.logger.info("unlinked channel %s", channel_id)
     return redirect(url_for("spotifyRoutes.success"))
 
 
