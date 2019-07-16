@@ -33,6 +33,7 @@ pyopenssl = "*"
 gunicorn = "*"
 python-dotenv = "*"
 flask-wtf = "*"
+hvac = "*"
 
 [dev-packages]
 rope = "*"
