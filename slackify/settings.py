@@ -18,6 +18,8 @@ class Config(object):
 
     ENVIRONMENT = os.getenv("FLASK_ENV", "production")
 
+    logging.info("using %s env", ENVIRONMENT)
+
     _flask_secrets = client.secrets.kv.v1.read_secret(
         mount_point="slackify", path="flask"
     )["data"]

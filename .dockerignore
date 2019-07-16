@@ -1,0 +1,6 @@
+.git
+.vscode
+caches
+__pycache__
+*.log
+.env
