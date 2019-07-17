@@ -22,7 +22,9 @@ def handle_app_mention(slack_client, message, channel_id):
     text = message.get("text")
     if "hi" in text or "help" in text:
         logger.info("responding to message from %s", message["user"])
-        response = ":notes:hi <@{}> :notes:".format(message["user"])
+        response = ":notes:hi <@{}> - you can ask me to `link` or `unlink` this channel.".format(
+            message["user"]
+        )
         slack_client.api_call(
             "chat.postMessage",
             channel=message["channel"],

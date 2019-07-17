@@ -1,6 +1,11 @@
 .git
+.gitignore
 .vscode
 caches
 __pycache__
 *.log
 .env
+scripts
+Dockerfile
+README.md
+.pre-commit-config.yaml
