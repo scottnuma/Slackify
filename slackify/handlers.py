@@ -22,7 +22,9 @@ def handle_app_mention(slack_client, message, channel_id):
     text = message.get("text")
     if "hi" in text or "help" in text:
         logger.info("responding to message from %s", message["user"])
-        response = ":notes:hi <@{}> :notes:".format(message["user"])
+        response = ":notes:hi <@{}> - you can ask me to `link` or `unlink` this channel.".format(
+            message["user"]
+        )
         slack_client.api_call(
             "chat.postMessage",
             channel=message["channel"],
@@ -32,7 +34,15 @@ def handle_app_mention(slack_client, message, channel_id):
         return
 
     if "link" or "unlink" in text:
-        if "link" in text:
+        if "unlink" in text:
+            logger.info("responding to unlink request")
+            token = spotify.spotify_database.generate_token(
+                spotify.spotify_database.get_db(), channel_id
+            )
+            link = "/".join([Config.BASE_URL, "spotify/unlink", channel_id, token])
+            response = "Follow this link to unlink this channel: {}".format(link)
+
+        elif "link" in text:
             logger.info(
                 "responding to %s for linking channel %s", message["user"], channel_id
             )
@@ -41,14 +51,6 @@ def handle_app_mention(slack_client, message, channel_id):
             )
             link = "/".join([Config.BASE_URL, "spotify/link", channel_id, token])
             response = "Follow this link to link this channel: {}".format(link)
-
-        if "unlink" in text:
-            logger.info("responding to unlink request")
-            token = spotify.spotify_database.generate_token(
-                spotify.spotify_database.get_db(), channel_id
-            )
-            link = "/".join([Config.BASE_URL, "spotify/unlink", channel_id, token])
-            response = "Follow this link to unlink this channel: {}".format(link)
 
         slack_client.api_call(
             "chat.postEphemeral",

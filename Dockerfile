@@ -9,5 +9,4 @@ FROM env
 
 COPY . /app
 
-ENTRYPOINT ["pipenv", "run", "gunicorn"]
-CMD ["-c", "gunicorn_config.py", "main:app"]
+CMD ["pipenv", "run", "gunicorn", "-c", "gunicorn_config.py", "main:app"]
