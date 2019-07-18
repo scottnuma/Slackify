@@ -1,0 +1,10 @@
+language: python
+
+services:
+  - docker
+
+install:
+  - docker build -t slackify .
+
+script:
+  - ./scripts/unit-test.sh
