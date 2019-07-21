@@ -34,6 +34,7 @@ gunicorn = "*"
 python-dotenv = "*"
 flask-wtf = "*"
 hvac = "*"
+google-cloud-firestore = "*"
 
 [dev-packages]
 rope = "*"
