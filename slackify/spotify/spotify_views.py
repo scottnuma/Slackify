@@ -12,8 +12,7 @@ import sqlite3
 import spotipy
 
 from .spotify_auth import create_spotify_oauth
-from .spotify_database import (
-    store_access_token,
+from .database import (
     get_access_token,
     store_user_id,
     store_playlist_id,

@@ -13,4 +13,4 @@ CREATE TABLE IF NOT EXISTS one_time_links (
         channel_id TEXT NOT NULL,
         token TEXT NOT NULL,
         timestamp TEXT NOT NULL
-);
+);  

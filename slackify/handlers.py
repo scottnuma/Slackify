@@ -36,8 +36,8 @@ def handle_app_mention(slack_client, message, channel_id):
     if "link" or "unlink" in text:
         if "unlink" in text:
             logger.info("responding to unlink request")
-            token = spotify.spotify_database.generate_token(
-                spotify.spotify_database.get_db(), channel_id
+            token = spotify.database.generate_token(
+                spotify.database.get_db(), channel_id
             )
             link = "/".join([Config.BASE_URL, "spotify/unlink", channel_id, token])
             response = "Follow this link to unlink this channel: {}".format(link)
@@ -46,8 +46,8 @@ def handle_app_mention(slack_client, message, channel_id):
             logger.info(
                 "responding to %s for linking channel %s", message["user"], channel_id
             )
-            token = spotify.spotify_database.generate_token(
-                spotify.spotify_database.get_db(), channel_id
+            token = spotify.database.generate_token(
+                spotify.database.get_db(), channel_id
             )
             link = "/".join([Config.BASE_URL, "spotify/link", channel_id, token])
             response = "Follow this link to link this channel: {}".format(link)
@@ -70,9 +70,7 @@ def handle_app_mention(slack_client, message, channel_id):
 
 def link_handler(slack_client, slack_event, channel_id):
     """Pass link events to their respective handlers and respond."""
-    if not spotify.spotify_database.contains_channel(
-        spotify.spotify_database.get_db(), channel_id
-    ):
+    if not spotify.database.contains_channel(spotify.database.get_db(), channel_id):
         logger.info("ignoring message as channel not recognized")
         return
 
