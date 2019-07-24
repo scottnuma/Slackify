@@ -5,6 +5,7 @@ import secrets
 from google.cloud import firestore
 
 from slackify.spotify import database
+from slackify.settings import Config
 
 
 def deleteCollection(coll_ref):
@@ -18,7 +19,7 @@ def deleteCollection(coll_ref):
 class TestTokenMethods(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conn = firestore.Client().collection("environment").document("testing")
+        cls.conn = database.get_db("testing")
 
     @classmethod
     def tearDownClass(cls):

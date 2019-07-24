@@ -2,11 +2,15 @@ import logging
 import sqlite3
 import secrets
 import datetime
+import json
+import os
+import base64
 
 from google.cloud import firestore
 from google.cloud import exceptions
+from google.auth.exceptions import DefaultCredentialsError
 
-from ..settings import Config
+from ..settings import Config, get_vault_client
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +19,63 @@ PLAYLIST_COLLECTION = "playlist_links"
 USER_COLLECTION = "user_auth"
 
 
-def get_db():
+def get_db(env=Config.ENVIRONMENT):
     logger.info("opening database connection")
-    return firestore.Client().collection("environment").document(Config.ENVIRONMENT)
+    return _get_db_client().collection("environment").document(env)
+
+
+def _generate_new_key(lease_period):
+
+    client = get_vault_client()
+    cred_dict = client.secrets.gcp.generate_service_account_key(
+        roleset="firestore-editor", method="GET"
+    )
+
+    if Config.ENVIRONMENT == "development":
+        logger.info("shortening lease")
+        # Reduce lease
+        client.sys.renew_lease(lease_id=cred_dict["lease_id"], increment=lease_period)
+    with open(Config.VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE, "w") as lease_file:
+        lease_file.write(cred_dict["lease_id"])
+
+    encoded_key = cred_dict["data"]["private_key_data"]
+    key_str = base64.standard_b64decode(encoded_key).decode("utf-8")
+
+    with open(Config.GOOGLE_APPLICATION_CREDENTIALS, "w") as cred_file:
+        cred_file.write(key_str)
+
+
+def _get_db_client():
+    try:
+        return firestore.Client()
+    except DefaultCredentialsError:
+        logger.info("failed to authenticate")
+
+        if Config.ENVIRONMENT == "development":
+            lease_period = 60 * 60
+        else:
+            lease_period = 31 * 24 * 60 * 60
+
+        try:
+            cred_file = open(Config.GOOGLE_APPLICATION_CREDENTIALS, "r")
+        except FileNotFoundError:
+            logger.info("failed to find default credentials file")
+            _generate_new_key(lease_period)
+        else:
+            # Renew the current key
+            logger.info("found default credentials file")
+
+            with open(
+                Config.VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE, "r"
+            ) as lease_file:
+                logger.info("found lease id")
+                lease_id = lease_file.read()
+
+            client = get_vault_client()
+            result = client.sys.renew_lease(lease_id=lease_id, increment=lease_period)
+            logger.info("renewed credential lease: %s", result)
+            cred_file.close()
+    return firestore.Client()
 
 
 def store_access_token(conn, spotify_user_id, access_token):
