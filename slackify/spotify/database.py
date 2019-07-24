@@ -47,10 +47,11 @@ def _generate_new_key(lease_period):
 
 def _get_db_client():
     try:
-        return firestore.Client()
+        client = firestore.Client()
+        logger.info("authenticated with found service account")
+        return client
     except DefaultCredentialsError:
         logger.info("failed to authenticate")
-
         if Config.ENVIRONMENT == "development":
             lease_period = 60 * 60
         else:
@@ -63,7 +64,7 @@ def _get_db_client():
             _generate_new_key(lease_period)
         else:
             # Renew the current key
-            logger.info("found default credentials file")
+            logger.info("found default credentials file, proceeding to renew")
 
             with open(
                 Config.VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE, "r"
@@ -75,7 +76,9 @@ def _get_db_client():
             result = client.sys.renew_lease(lease_id=lease_id, increment=lease_period)
             logger.info("renewed credential lease: %s", result)
             cred_file.close()
-    return firestore.Client()
+    client = firestore.Client()
+    logger.info("authenticated with created/renwed service account")
+    return client
 
 
 def store_access_token(conn, spotify_user_id, access_token):

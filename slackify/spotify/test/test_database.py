@@ -1,34 +1,47 @@
 import unittest
 import os
 import secrets
+import logging
 
 from google.cloud import firestore
 
 from slackify.spotify import database
-from slackify.settings import Config
+from slackify.settings import Config, get_vault_client
+
+logger = logging.getLogger(__name__)
 
 
 def deleteCollection(coll_ref):
     docs = coll_ref.stream()
 
     for doc in docs:
-        print(u"Deleting doc {} => {}".format(doc.id, doc.to_dict()))
+        logger.info("Deleting doc %s => %s", doc.id, doc.to_dict())
         doc.reference.delete()
 
 
 class TestTokenMethods(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        logger.info("setting up test class")
         cls.conn = database.get_db("testing")
 
     @classmethod
     def tearDownClass(cls):
+        logger.info("tearing down test class")
+
         for coll in [
             database.TOKEN_COLLECTION,
             database.PLAYLIST_COLLECTION,
             database.USER_COLLECTION,
         ]:
             deleteCollection(cls.conn.collection(coll))
+
+        client = get_vault_client()
+        with open(Config.VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE, "r") as lease_file:
+            lease_id = lease_file.read()
+        logger.info("revoking service account lease and deleting credential")
+        client.sys.revoke_lease(lease_id=lease_id)
+        os.remove(Config.GOOGLE_APPLICATION_CREDENTIALS)
 
     def test_store_and_retrieve(self):
         test_token = "test_access_token"
