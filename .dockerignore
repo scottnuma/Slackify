@@ -9,3 +9,5 @@ scripts
 Dockerfile
 README.md
 .pre-commit-config.yaml
+lease.txt
+service_account.json

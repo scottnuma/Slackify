@@ -6,4 +6,5 @@ caches/
 __pycache__
 *.log
 *.db
-
+lease.txt
+service_account.json

@@ -4,7 +4,6 @@ services:
   - docker
 
 install:
-  - python slackify/spotify/scripts/create_database.py
   - docker build -t slackify .
 
 script:
