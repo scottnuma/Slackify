@@ -10,7 +10,5 @@ docker build -t slackify .
 docker run \
 	--name slackify-server \
 	--env-file=.env \
-	-p 0.0.0.0:443:5000 \
-	--mount type=bind,source="${SLACKIFY_SSL_DIR}",target="${SLACKIFY_SSL_DIR}" \
-	--mount type=bind,source="${SLACKIFY_SSL_ARCHIVE}",target="${SLACKIFY_SSL_ARCHIVE}" \
+	-p 0.0.0.0:80:5000 \
 	slackify
