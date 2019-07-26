@@ -129,22 +129,28 @@ def get_playlist_user(conn, channel_id):
     return (doc_dict.get("playlist_id"), doc_dict.get("spotify_user_id"))
 
 
+def _upsert_playlist_collection(conn, channel_id, data):
+    doc_ref = conn.collection(PLAYLIST_COLLECTION).document(channel_id)
+    doc = doc_ref.get()
+    if doc.exists:
+        doc_ref.update(data)
+    else:
+        doc_ref.set(data)
+
+
 def store_user_id(conn, channel_id, spotify_user_id):
-    conn.collection(PLAYLIST_COLLECTION).document(channel_id).set(
-        {"spotify_user_id": spotify_user_id}
-    )
+    data = {"spotify_user_id": spotify_user_id}
+    _upsert_playlist_collection(conn, channel_id, data)
 
 
 def store_playlist_id(conn, channel_id, playlist_id):
     """
     Store the playlist id of a channel
 
-    Assumes that a document already exists for the channel due to storing
-    the spotify_user_id
+   Does not assume that a document already exists for the channel
     """
-    conn.collection(PLAYLIST_COLLECTION).document(channel_id).update(
-        {"channel_id": channel_id, "playlist_id": playlist_id}
-    )
+    data = {"playlist_id": playlist_id}
+    _upsert_playlist_collection(conn, channel_id, data)
 
 
 def delete_channel(conn, channel_id):
