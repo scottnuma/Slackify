@@ -1,7 +1,9 @@
 source /home/scott/Dropbox/gDrive/programming-master/slack/spotify-playlist-manager/.env
 
+docker build -t slackify .
+
 docker run \
-    --env FLASK_ENV=$FLASK_ENV \
+    --env FLASK_ENV=testing \
     --env FLASK_APP=$FLASK_APP \
     --env SPOTIPY_CLIENT_ID=$SPOTIPY_CLIENT_ID \
     --env SPOTIPY_REDIRECT_URI=$SPOTIPY_REDIRECT_URI \

@@ -31,7 +31,7 @@ def _generate_new_key(lease_period):
         roleset="firestore-editor", method="GET"
     )
 
-    if Config.ENVIRONMENT == "development":
+    if Config.ENVIRONMENT == "development" or Config.ENVIRONMENT == "testing":
         logger.info("shortening lease")
         # Reduce lease
         client.sys.renew_lease(lease_id=cred_dict["lease_id"], increment=lease_period)
@@ -52,7 +52,7 @@ def _get_db_client():
         return client
     except DefaultCredentialsError:
         logger.info("failed to authenticate")
-        if Config.ENVIRONMENT == "development":
+        if Config.ENVIRONMENT == "development" or Config.ENVIRONMENT == "testing":
             lease_period = 60 * 60
         else:
             lease_period = 31 * 24 * 60 * 60
@@ -115,26 +115,42 @@ def contains_channel(conn, channel_id):
 
 
 def get_playlist_user(conn, channel_id):
-    """Get (playlist id, spotify user id) for a channel"""
+    """
+    Get (playlist id, spotify user id) for a channel
+    
+    Either playlist id or spotify user id may be None
+    """
     doc = conn.collection(PLAYLIST_COLLECTION).document(channel_id).get()
 
     if not doc.exists:
         return None
 
     doc_dict = doc.to_dict()
-    return (doc_dict["playlist_id"], doc_dict["spotify_user_id"])
+    return (doc_dict.get("playlist_id"), doc_dict.get("spotify_user_id"))
+
+
+def _upsert_playlist_collection(conn, channel_id, data):
+    doc_ref = conn.collection(PLAYLIST_COLLECTION).document(channel_id)
+    doc = doc_ref.get()
+    if doc.exists:
+        doc_ref.update(data)
+    else:
+        doc_ref.set(data)
 
 
 def store_user_id(conn, channel_id, spotify_user_id):
-    conn.collection(PLAYLIST_COLLECTION).document(channel_id).update(
-        {"spotify_user_id": spotify_user_id}
-    )
+    data = {"spotify_user_id": spotify_user_id}
+    _upsert_playlist_collection(conn, channel_id, data)
 
 
 def store_playlist_id(conn, channel_id, playlist_id):
-    conn.collection(PLAYLIST_COLLECTION).document(channel_id).set(
-        {"channel_id": channel_id, "playlist_id": playlist_id}
-    )
+    """
+    Store the playlist id of a channel
+
+   Does not assume that a document already exists for the channel
+    """
+    data = {"playlist_id": playlist_id}
+    _upsert_playlist_collection(conn, channel_id, data)
 
 
 def delete_channel(conn, channel_id):
