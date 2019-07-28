@@ -8,3 +8,8 @@ install:
 
 script:
   - ./scripts/unit-test.sh
+
+after_success:
+  - if [$TRAVIS_BRANCH == "master"]; 
+    ./scripts/gcr-push-via-vault.sh;
+    fi
