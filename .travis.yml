@@ -9,7 +9,8 @@ install:
 script:
   - ./scripts/unit-test.sh
 
-after_success:
-  - if [$TRAVIS_BRANCH == "master"]; 
-    ./scripts/gcr-push-via-vault.sh;
-    fi
+deploy:
+  provider: script
+  script: ./scripts/gcr-push-via-vault.sh
+  on:
+    branch: master
