@@ -14,5 +14,6 @@ docker run \
     --env GOOGLE_APPLICATION_CREDENTIALS=/app/service_account.json \
     --env VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE=/app/lease.txt \
     --name slackify-testing \
+    --rm \
     slackify \
     pipenv run python -m unittest
