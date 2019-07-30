@@ -1,6 +1,7 @@
-import logging
 import hashlib
+import logging
 import os
+import sys
 
 from .settings import Config
 
@@ -23,7 +24,7 @@ def init_logger():
     logger.addHandler(fh)
 
     # create console handle
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
