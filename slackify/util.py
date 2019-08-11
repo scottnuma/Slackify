@@ -3,6 +3,8 @@ import logging
 import os
 import sys
 
+from pythonjsonlogger import jsonlogger
+
 from .settings import Config
 
 logger = logging.getLogger(__name__)
@@ -15,7 +17,7 @@ def init_logger():
     logger.setLevel(logging.DEBUG)
 
     # create formatter and add it to the handlers
-    formatter = logging.Formatter("%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s")
+    formatter = jsonlogger.JsonFormatter()
 
     # create file handler which logs even debug messages
     fh = logging.FileHandler("slack_spotify_playlist.log")
