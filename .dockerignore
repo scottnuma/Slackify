@@ -6,6 +6,7 @@ __pycache__
 *.log
 .env
 scripts
+!scripts/serve.sh
 Dockerfile
 README.md
 .pre-commit-config.yaml

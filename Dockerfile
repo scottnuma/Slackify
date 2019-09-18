@@ -9,4 +9,4 @@ FROM env
 
 COPY . /app
 
-CMD ["pipenv", "run", "gunicorn", "-c", "gunicorn_config.py", "main:app"]
+CMD ["bash", "/app/scripts/serve.sh"]
