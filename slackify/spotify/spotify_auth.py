@@ -18,7 +18,7 @@ def create_spotify_oauth(id):
     client_secret = Config.SPOTIPY_CLIENT_SECRET
     redirect_uri = Config.SPOTIPY_REDIRECT_URI
 
-    cache_dir = "caches"
+    cache_dir = "_gen/caches"
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
     cache_path = "{}/cache-{}".format(cache_dir, id)

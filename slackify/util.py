@@ -20,7 +20,7 @@ def init_logger():
     formatter = jsonlogger.JsonFormatter()
 
     # create file handler which logs even debug messages
-    fh = logging.FileHandler("slack_spotify_playlist.log")
+    fh = logging.FileHandler("_gen/slack_spotify_playlist.log")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
     logger.addHandler(fh)

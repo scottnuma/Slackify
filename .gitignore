@@ -9,3 +9,5 @@ __pycache__
 lease.txt
 service_account.json
 k8s
+deploy
+secret
