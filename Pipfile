@@ -38,9 +38,9 @@ google-cloud-firestore = "*"
 python-json-logger = "*"
 
 [dev-packages]
-rope = "*"
 black = "*"
 pre-commit = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.7"
