@@ -3,115 +3,69 @@ Process all slack link_shared events.
 
 Distributes work to specific domain handlers, such as Spotify
 """
-
 import logging
-from . import spotify
-from .settings import Config
+from typing import Dict
+from typing import List
+from typing import Optional
 
+from slack import WebClient
+
+from slackify.domainplugins import domain_plugins
+from slackify.mentionplugins import mention_plugins
+from slackify.settings import Config
 
 logger = logging.getLogger(__name__)
-domain_handlers = {"open.spotify.com": spotify.handler}
+# domain_handlers = {"open.spotify.com": spotify.handler}
 
 
-def handle_app_mention(slack_client, message, channel_id):
+def handle_app_mention(slack_client: WebClient, event: Dict, channel_id: str,) -> None:
     """Give friendly response in thread when @mentioned."""
-    if message.get("subtype") is not None:
-        logger.info("ignoring mention")
-        return
+    text = event["text"]
 
-    text = message.get("text")
-    if "hi" in text or "help" in text:
-        logger.info("responding to message from %s", message["user"])
-        response = ":notes:hi <@{}> - you can ask me to `link` or `unlink` this channel.".format(
-            message["user"]
-        )
-        slack_client.api_call(
-            "chat.postMessage",
-            channel=message["channel"],
-            text=response,
-            thread_ts=message["event_ts"],
-        )
-        return
-
-    if "link" or "unlink" in text:
-        if "unlink" in text:
-            logger.info("responding to unlink request")
-            token = spotify.database.generate_token(
-                spotify.database.get_db(), channel_id
+    for mention_plugin in mention_plugins:
+        if mention_plugin.matches(text):
+            mention_plugin.handle(
+                slack_client, channel_id, event,
             )
-            link = "/".join([Config.BASE_URL, "spotify/unlink", channel_id, token])
-            response = "Follow this link to unlink this channel: {}".format(link)
-
-        elif "link" in text:
-            logger.info(
-                "responding to %s for linking channel %s", message["user"], channel_id
-            )
-            token = spotify.database.generate_token(
-                spotify.database.get_db(), channel_id
-            )
-            link = "/".join([Config.BASE_URL, "spotify/link", channel_id, token])
-            response = "Follow this link to link this channel: {}".format(link)
-
-        slack_client.api_call(
-            "chat.postEphemeral",
-            channel=message["channel"],
-            text=response,
-            user=message["user"],
-        )
-        slack_client.api_call(
-            "reactions.add",
-            channel=message["channel"],
-            name="notes",
-            timestamp=message["event_ts"],
-        )
-        return
+            return
     logger.info('saw mention but found no key words in "%s"', text)
 
 
-def link_handler(slack_client, slack_event, channel_id):
+def handle_link(slack_client: WebClient, slack_event: Dict, channel_id: str,) -> None:
     """Pass link events to their respective handlers and respond."""
-    if not spotify.database.contains_channel(spotify.database.get_db(), channel_id):
-        logger.info("ignoring message as channel not recognized")
+    # if not spotify.database.contains_channel(spotify.database.get_db(), channel_id):
+    #    logger.info("ignoring message as channel not recognized")
+    #    return
+
+    links = slack_event.get("links")
+    if not links:
+        logger.info("ignoring empty links")
         return
 
-    perfect_results = True
-    for result in domain_handler(channel_id, slack_event.get("links")):
-        if result != spotify.ADD_SUCCESS:
-            perfect_results = False
-            slack_client.api_call(
-                "chat.postMessage",
-                channel=slack_event["channel"],
-                text=result,
-                thread_ts=slack_event["message_ts"],
-            )
+    link = links[0]
 
-    if perfect_results:
-        slack_client.api_call(
-            "reactions.add",
+    if len(links) > 1:
+        logger.info("multiple links, ignoring links after the first.")
+
+    feedback: Optional[str] = None
+
+    domain = link.get("domain")
+    for domain_plugin in domain_plugins:
+        if domain_plugin.matches(domain):
+            feedback = domain_plugin.handler(id, link)
+            break
+
+    if feedback is None:
+        logger.info(f"found no plugin for {domain}")
+        slack_client.reactions_add(
             channel=slack_event.get("channel"),
             name="notes",
             timestamp=slack_event.get("message_ts"),
         )
+        return
 
-
-def domain_handler(id, links):
-    """Pass each link to their service's handler."""
-    handler_feedback = []
-
-    if not links:
-        logger.info("ignoring empty links")
-        return None
-
-    if len(links) > 1:
-        logger.info("multiple links given to handle_link")
-
-    for link in links:
-        domain = link.get("domain")
-        if domain not in domain_handlers:
-            logger.info("ignoring unrecognized domain: %s", domain)
-            continue
-
-        logger.info("passing link to domain handler")
-        handler_feedback.append(domain_handlers[domain](id, link))
-
-    return handler_feedback
+    slack_client.chat_postMessage(
+        channel=slack_event["channel"],
+        text=feedback,
+        thread_ts=slack_event["message_ts"],
+    )

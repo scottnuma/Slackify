@@ -1,17 +1,16 @@
 import logging
 import os
 
-import slackify
-
+import slackify.app
 
 ENVIRONMENT = os.getenv("FLASK_ENV", "production")
 
-app = slackify.create_app()
+app = slackify.app.create_app()
 
 
 if __name__ == "__main__":
     if ENVIRONMENT == "development":
-        app.run(port=5000, host="0.0.0.0", debug=True, ssl_context="adhoc")
+        app.run(port=5000, host="0.0.0.0", debug=True)
     else:
         app.run(port=5000, host="0.0.0.0", debug=True)
 else:

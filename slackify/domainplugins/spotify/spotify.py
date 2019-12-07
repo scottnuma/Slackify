@@ -3,7 +3,9 @@ import re
 
 import spotipy
 
-from .database import get_db, get_playlist_user, get_access_token
+from .database import get_access_token
+from .database import get_db
+from .database import get_playlist_user
 
 
 logger = logging.getLogger(__name__)

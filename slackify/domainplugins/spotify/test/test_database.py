@@ -1,12 +1,13 @@
-import unittest
+import logging
 import os
 import secrets
-import logging
+import unittest
 
 from google.cloud import firestore
 
+from slackify.settings import Config
+from slackify.settings import get_vault_client
 from slackify.spotify import database
-from slackify.settings import Config, get_vault_client
 
 logger = logging.getLogger(__name__)
 

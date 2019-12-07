@@ -1,30 +1,28 @@
-from flask import (
-    Blueprint,
-    current_app,
-    redirect,
-    url_for,
-    request,
-    session,
-    render_template,
-    flash,
-)
 import sqlite3
-import spotipy
 
-from .spotify_auth import create_spotify_oauth
-from .database import (
-    get_access_token,
-    store_user_id,
-    store_playlist_id,
-    get_db,
-    get_playlist_user,
-    delete_channel,
-    store_access_token,
-    verify_token,
-)
-from .spotify import get_username, get_playlists
-from .playlist_form import PlaylistForm
+import spotipy
+from flask import Blueprint
+from flask import current_app
+from flask import flash
+from flask import redirect
+from flask import render_template
+from flask import request
+from flask import session
+from flask import url_for
+
 from ..settings import Config
+from .database import delete_channel
+from .database import get_access_token
+from .database import get_db
+from .database import get_playlist_user
+from .database import store_access_token
+from .database import store_playlist_id
+from .database import store_user_id
+from .database import verify_token
+from .playlist_form import PlaylistForm
+from .spotify import get_playlists
+from .spotify import get_username
+from .spotify_auth import create_spotify_oauth
 
 
 spotify_routes = Blueprint("spotifyRoutes", __name__, template_folder="templates")

@@ -2,11 +2,11 @@
 <html>
    <body>
       <div>Playlist must be one of the ten most recent playlists</div>
-		
+
       {% for message in form.playlist_id.errors %}
          <div>{{ message }}</div>
       {% endfor %}
-      
+
       <form method = post>
             {{ form.hidden_tag() }}
             <div>

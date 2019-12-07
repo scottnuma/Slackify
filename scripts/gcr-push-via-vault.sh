@@ -9,4 +9,3 @@ curl \
     jq '.data.token' |\
     docker login -u oauth2accesstoken --password-stdin https://gcr.io
 docker push gcr.io/slack-spotify-playlist-226804/slackify
-

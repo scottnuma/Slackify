@@ -1,16 +1,17 @@
-import logging
-import sqlite3
-import secrets
+import base64
 import datetime
 import json
+import logging
 import os
-import base64
+import secrets
+import sqlite3
 
-from google.cloud import firestore
-from google.cloud import exceptions
 from google.auth.exceptions import DefaultCredentialsError
+from google.cloud import exceptions
+from google.cloud import firestore
 
-from ..settings import Config, get_vault_client
+from ..settings import Config
+from ..settings import get_vault_client
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ def contains_channel(conn, channel_id):
 def get_playlist_user(conn, channel_id):
     """
     Get (playlist id, spotify user id) for a channel
-    
+
     Either playlist id or spotify user id may be None
     """
     doc = conn.collection(PLAYLIST_COLLECTION).document(channel_id).get()

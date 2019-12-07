@@ -11,3 +11,4 @@ service_account.json
 k8s
 deploy
 secret
+*.pyc

@@ -34,7 +34,7 @@ def init_logger():
     return logger
 
 
-def generate_id(team_id, channel):
+def generate_channel_id(team_id: str, channel: str) -> str:
     """
     Create an id unique to each channel regardless of workspace.
 

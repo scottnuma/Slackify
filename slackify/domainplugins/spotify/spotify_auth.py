@@ -1,10 +1,10 @@
-import os
 import logging
+import os
 import sqlite3
 
 import spotipy
-import spotipy.util as util
 import spotipy.oauth2 as oauth2
+import spotipy.util as util
 
 from slackify.settings import Config
 
