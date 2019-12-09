@@ -5,13 +5,16 @@ import logging
 import os
 import secrets
 import sqlite3
+from typing import Optional
 
 from google.auth.exceptions import DefaultCredentialsError
 from google.cloud import exceptions
-from google.cloud import firestore
+from google.cloud.firestore import Client
+from google.cloud.firestore import SERVER_TIMESTAMP
+from google.cloud.firestore_v1.document import DocumentReference
+from google.cloud.firestore_v1.types import WriteResult
 
-from ..settings import Config
-from ..settings import get_vault_client
+from slackify.domainplugins.spotify.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,69 +23,19 @@ PLAYLIST_COLLECTION = "playlist_links"
 USER_COLLECTION = "user_auth"
 
 
-def get_db(env=Config.ENVIRONMENT):
-    logger.info("opening database connection")
-    return _get_db_client().collection("environment").document(env)
+def get_db(conn: Client, env: str = Settings.ENVIRONMENT) -> DocumentReference:
+    return conn.collection("environment").document(env)
 
 
-def _generate_new_key(lease_period):
-
-    client = get_vault_client()
-    cred_dict = client.secrets.gcp.generate_service_account_key(
-        roleset="firestore-editor", method="GET"
-    )
-
-    if Config.ENVIRONMENT == "development" or Config.ENVIRONMENT == "testing":
-        logger.info("shortening lease")
-        # Reduce lease
-        client.sys.renew_lease(lease_id=cred_dict["lease_id"], increment=lease_period)
-    with open(Config.VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE, "w") as lease_file:
-        lease_file.write(cred_dict["lease_id"])
-
-    encoded_key = cred_dict["data"]["private_key_data"]
-    key_str = base64.standard_b64decode(encoded_key).decode("utf-8")
-
-    with open(Config.GOOGLE_APPLICATION_CREDENTIALS, "w") as cred_file:
-        cred_file.write(key_str)
-
-
-def _get_db_client():
-    try:
-        client = firestore.Client()
-        logger.info("authenticated with found service account")
-        return client
-    except DefaultCredentialsError:
-        logger.info("failed to authenticate")
-        if Config.ENVIRONMENT == "development" or Config.ENVIRONMENT == "testing":
-            lease_period = 60 * 60
-        else:
-            lease_period = 31 * 24 * 60 * 60
-
-        try:
-            cred_file = open(Config.GOOGLE_APPLICATION_CREDENTIALS, "r")
-        except FileNotFoundError:
-            logger.info("failed to find default credentials file")
-            _generate_new_key(lease_period)
-        else:
-            # Renew the current key
-            logger.info("found default credentials file, proceeding to renew")
-
-            with open(
-                Config.VAULT_GCP_SERVICE_ACCOUNT_LEASE_NAME_FILE, "r"
-            ) as lease_file:
-                logger.info("found lease id")
-                lease_id = lease_file.read()
-
-            client = get_vault_client()
-            result = client.sys.renew_lease(lease_id=lease_id, increment=lease_period)
-            logger.info("renewed credential lease: %s", result)
-            cred_file.close()
-    client = firestore.Client()
-    logger.info("authenticated with created/renwed service account")
+def _get_db_client() -> Client:
+    client = Client()
+    logger.info("authenticated with found service account")
     return client
 
 
-def store_access_token(conn, spotify_user_id, access_token):
+def store_access_token(
+    conn: Client, spotify_user_id: str, access_token: str,
+) -> WriteResult:
     """Stores an retrievable access token"""
     return (
         conn.collection(USER_COLLECTION)
@@ -91,7 +44,7 @@ def store_access_token(conn, spotify_user_id, access_token):
     )
 
 
-def get_access_token(conn, spotify_user_id):
+def get_access_token(conn: Client, spotify_user_id: str) -> Optional[str]:
     """
     Retrieve the access token for a Spotify user
 
@@ -109,13 +62,13 @@ def get_access_token(conn, spotify_user_id):
     return doc.to_dict()["access_token"]
 
 
-def contains_channel(conn, channel_id):
+def contains_channel(conn: Client, channel_id: str) -> bool:
     """Return if a channel is in the database"""
     doc = conn.collection(PLAYLIST_COLLECTION).document(channel_id).get()
     return doc.exists
 
 
-def get_playlist_user(conn, channel_id):
+def get_playlist_user(conn: Client, channel_id: str) -> Tuple[str, str]:
     """
     Get (playlist id, spotify user id) for a channel
 
@@ -130,31 +83,33 @@ def get_playlist_user(conn, channel_id):
     return (doc_dict.get("playlist_id"), doc_dict.get("spotify_user_id"))
 
 
-def _upsert_playlist_collection(conn, channel_id, data):
+def _upsert_playlist_collection(
+    conn: Client, channel_id: str, data: Dict[str, str]
+) -> WriteResult:
     doc_ref = conn.collection(PLAYLIST_COLLECTION).document(channel_id)
     doc = doc_ref.get()
     if doc.exists:
-        doc_ref.update(data)
+        return doc_ref.update(data)
     else:
-        doc_ref.set(data)
+        return doc_ref.set(data)
 
 
-def store_user_id(conn, channel_id, spotify_user_id):
+def store_user_id(conn: Client, channel_id: str, spotify_user_id: str) -> WriteResult:
     data = {"spotify_user_id": spotify_user_id}
-    _upsert_playlist_collection(conn, channel_id, data)
+    return _upsert_playlist_collection(Client, channel_id, data)
 
 
-def store_playlist_id(conn, channel_id, playlist_id):
+def store_playlist_id(conn: Client, channel_id: str, playlist_id: str) -> WriteResult:
     """
     Store the playlist id of a channel
 
    Does not assume that a document already exists for the channel
     """
     data = {"playlist_id": playlist_id}
-    _upsert_playlist_collection(conn, channel_id, data)
+    return _upsert_playlist_collection(conn, channel_id, data)
 
 
-def delete_channel(conn, channel_id):
+def delete_channel(conn: Client, channel_id: str) -> None:
     """
     Removes the link between a channel and playlist and user
 
@@ -169,20 +124,16 @@ def delete_channel(conn, channel_id):
         token.reference.delete()
 
 
-def generate_token(conn, channel_id):
+def generate_token(conn: Client, channel_id: str) -> str:
     """Generates and saves a one time token"""
     token = secrets.token_hex()
     conn.collection(TOKEN_COLLECTION).document().set(
-        {
-            "channel_id": channel_id,
-            "token": token,
-            "timestamp": firestore.SERVER_TIMESTAMP,
-        }
+        {"channel_id": channel_id, "token": token, "timestamp": SERVER_TIMESTAMP,}
     )
     return token
 
 
-def verify_token(conn, channel_id, token):
+def verify_token(conn: Client, channel_id: str, token: str) -> bool:
     """
     Returns whether a token is valid
 

@@ -9,19 +9,20 @@ load_dotenv()
 class Config(object):
     """Base configuration"""
 
-    ENVIRONMENT = os.environ["FLASK_ENV"]
-    logging.info("using %s env", ENVIRONMENT)
+    ENVIRONMENT: str = os.environ["FLASK_ENV"]
 
-    FLASK_SESSION_KEY = os.environ["FLASK_SESSION_KEY"]
+    FLASK_SESSION_KEY: str = os.environ["FLASK_SESSION_KEY"]
 
-    BASE_URL = os.environ["SLACKIFY_BASE_URL"]
+    BASE_URL: str = os.environ["SLACKIFY_BASE_URL"]
 
-    SLACK_APP_ID = os.environ["SLACK_APP_ID"]
-    SLACK_CLIENT_ID = os.environ["SLACK_CLIENT_ID"]
-    SLACK_CLIENT_SECRET = os.environ["SLACK_CLIENT_SECRET"]
-    SLACK_SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
+    SLACK_APP_ID: str = os.environ["SLACK_APP_ID"]
+    SLACK_CLIENT_ID: str = os.environ["SLACK_CLIENT_ID"]
+    SLACK_CLIENT_SECRET: str = os.environ["SLACK_CLIENT_SECRET"]
+    SLACK_SIGNING_SECRET: str = os.environ["SLACK_SIGNING_SECRET"]
 
-    SLACK_OAUTH_ACCESS_TOKEN = os.environ["SLACK_OAUTH_ACCESS_TOKEN"]
-    SLACK_BOT_USER_OAUTH_ACCESS_TOKEN = os.environ["SLACK_BOT_USER_OAUTH_ACCESS_TOKEN"]
+    SLACK_OAUTH_ACCESS_TOKEN: str = os.environ["SLACK_OAUTH_ACCESS_TOKEN"]
+    SLACK_BOT_USER_OAUTH_ACCESS_TOKEN: str = os.environ[
+        "SLACK_BOT_USER_OAUTH_ACCESS_TOKEN"
+    ]
 
-    SLACK_ID_KEY = os.environ["SLACK_ID_KEY"]
+    SLACK_ID_KEY: str = os.environ["SLACK_ID_KEY"]
