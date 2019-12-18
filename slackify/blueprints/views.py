@@ -1,4 +1,6 @@
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint
+from flask import current_app
+from flask import render_template
 
 basics = Blueprint("simplepage", __name__, template_folder="templates")
 

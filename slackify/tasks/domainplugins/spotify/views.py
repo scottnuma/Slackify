@@ -10,19 +10,19 @@ from flask import request
 from flask import session
 from flask import url_for
 
-from ..settings import Config
-from .database import delete_channel
-from .database import get_access_token
-from .database import get_db
-from .database import get_playlist_user
-from .database import store_access_token
-from .database import store_playlist_id
-from .database import store_user_id
-from .database import verify_token
-from .playlist_form import PlaylistForm
-from .spotify import get_playlists
-from .spotify import get_username
-from .spotify_auth import create_spotify_oauth
+from slackify.tasks.domainplugins.spotify.database import delete_channel
+from slackify.tasks.domainplugins.spotify.database import get_access_token
+from slackify.tasks.domainplugins.spotify.database import get_db
+from slackify.tasks.domainplugins.spotify.database import get_playlist_user
+from slackify.tasks.domainplugins.spotify.database import store_access_token
+from slackify.tasks.domainplugins.spotify.database import store_playlist_id
+from slackify.tasks.domainplugins.spotify.database import store_user_id
+from slackify.tasks.domainplugins.spotify.database import verify_token
+from slackify.tasks.domainplugins.spotify.playlist_form import PlaylistForm
+from slackify.tasks.domainplugins.spotify.settings import Settings
+from slackify.tasks.domainplugins.spotify.spotify import get_playlists
+from slackify.tasks.domainplugins.spotify.spotify import get_username
+from slackify.tasks.domainplugins.spotify.spotify_auth import create_spotify_oauth
 
 
 spotify_routes = Blueprint("spotifyRoutes", __name__, template_folder="templates")
@@ -31,7 +31,7 @@ spotify_routes = Blueprint("spotifyRoutes", __name__, template_folder="templates
 @spotify_routes.route("/link/<string:id>/<string:token>")
 def authorize(id, token):
     if not verify_token(get_db(), id, token):
-        if Config.ENVIRONMENT == "development":
+        if Settings.ENVIRONMENT == "development":
             current_app.logger.info("Skipping invalid token")
         else:
             return redirect(url_for("spotifyRoutes.failure"))
@@ -109,7 +109,7 @@ def select_playlist():
 def unlink(channel_id, token):
     """Disassociates a channel and a playlist"""
     if not verify_token(get_db(), channel_id, token):
-        if Config.ENVIRONMENT == "development":
+        if Settings.ENVIRONMENT == "development":
             current_app.logger.info("Skipping invalid token")
         else:
             return redirect(url_for("spotifyRoutes.failure"))

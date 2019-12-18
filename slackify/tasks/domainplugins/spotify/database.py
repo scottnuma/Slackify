@@ -14,7 +14,7 @@ from google.cloud.firestore import SERVER_TIMESTAMP
 from google.cloud.firestore_v1.document import DocumentReference
 from google.cloud.firestore_v1.types import WriteResult
 
-from slackify.domainplugins.spotify.settings import Settings
+from slackify.tasks.domainplugins.spotify.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,8 @@ PLAYLIST_COLLECTION = "playlist_links"
 USER_COLLECTION = "user_auth"
 
 
-def get_db(conn: Client, env: str = Settings.ENVIRONMENT) -> DocumentReference:
+def get_db(env: str = Settings.ENVIRONMENT) -> DocumentReference:
+    conn = _get_db_client()
     return conn.collection("environment").document(env)
 
 

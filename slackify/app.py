@@ -8,20 +8,24 @@ from flask import Response
 from slack import WebClient
 from slackeventsapi import SlackEventAdapter
 
-from slackify.domainplugins import domain_plugins
-from slackify.handlers import handle_app_mention
-from slackify.handlers import handle_link
-from slackify.oauth import oauth
+from slackify.blueprints.oauth import oauth
+from slackify.blueprints.views import basics
 from slackify.settings import Config
+from slackify.tasks.domainplugins import domain_plugins
+from slackify.tasks.handlers import handle_app_mention
+from slackify.tasks.handlers import handle_link
 from slackify.util import generate_channel_id
-from slackify.views import basics
+from slackify.util import init_celery
 
 
-def create_app():
+def create_app(celery):
     app = Flask(__name__)
+
+    # Main plugins for functionality
     app.register_blueprint(basics)
     app.register_blueprint(oauth)
 
+    # Plugins may also expose endpoints
     for domain_plugin in domain_plugins:
         app.register_blueprint(
             domain_plugin.blueprint, url_prefix=domain_plugin.url_prefix
@@ -37,6 +41,8 @@ def create_app():
     slack_events_adapter.on("app_mention", on_mention(app, web_client))
     slack_events_adapter.on("link_shared", on_link_shared(app, web_client))
 
+    init_celery(celery, app)
+
     return app
 
 
@@ -50,7 +56,7 @@ def on_mention(app: Flask, web_client: WebClient):
         event, channel_id = parse_event_and_id(event_data)
 
         app.logger.debug("received mention: %s", event)
-        handle_app_mention(web_client, event, channel_id)
+        handle_app_mention.delay(web_client, event, channel_id)
         app.logger.debug("sending 200")
         return Response(), 200
 
@@ -62,7 +68,7 @@ def on_link_shared(app: Flask, web_client: WebClient):
         """Pass link events to their respective handlers and respond."""
         event, channel_id = parse_event_and_id(event_data)
         app.logger.debug("received event: %s", event)
-        handle_link(web_client, event, channel_id)
+        handle_link.delay(web_client, event, channel_id)
         app.logger.debug("sending 200")
         return Response(), 200
 

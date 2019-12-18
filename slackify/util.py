@@ -5,7 +5,7 @@ import sys
 
 from pythonjsonlogger import jsonlogger
 
-from .settings import Config
+from slackify.settings import Config
 
 logger = logging.getLogger(__name__)
 
@@ -43,3 +43,15 @@ def generate_channel_id(team_id: str, channel: str) -> str:
     dev_id = "github.com/scottnuma"
     combined = "-".join([dev_id, team_id, channel, Config.SLACK_ID_KEY])
     return hashlib.sha224(combined.encode("utf-8")).digest().hex()
+
+
+def init_celery(celery_app, flask_app):
+    celery_app.conf.update(flask_app.config)
+    TaskBase = celery_app.Task
+
+    class ContextTask(TaskBase):
+        def __call__(self, *args, **kwargs):
+            with flask_app.app_context():
+                return TaskBase.__call__(self, *args, **kwargs)
+
+    celery_app.Task = ContextTask

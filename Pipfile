@@ -37,6 +37,7 @@ hvac = "*"
 google-cloud-firestore = "*"
 python-json-logger = "*"
 mypy-extensions = "*"
+celery = "*"
 
 [dev-packages]
 black = "*"

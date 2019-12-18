@@ -10,14 +10,16 @@ from typing import Optional
 
 from slack import WebClient
 
-from slackify.domainplugins import domain_plugins
-from slackify.mentionplugins import mention_plugins
+from slackify import celery
 from slackify.settings import Config
+from slackify.tasks.domainplugins import domain_plugins
+from slackify.tasks.mentionplugins import mention_plugins
 
 logger = logging.getLogger(__name__)
 # domain_handlers = {"open.spotify.com": spotify.handler}
 
 
+@celery.task()
 def handle_app_mention(slack_client: WebClient, event: Dict, channel_id: str,) -> None:
     """Give friendly response in thread when @mentioned."""
     text = event["text"]
@@ -31,6 +33,7 @@ def handle_app_mention(slack_client: WebClient, event: Dict, channel_id: str,) -
     logger.info('saw mention but found no key words in "%s"', text)
 
 
+@celery.task()
 def handle_link(slack_client: WebClient, slack_event: Dict, channel_id: str,) -> None:
     """Pass link events to their respective handlers and respond."""
     # if not spotify.database.contains_channel(spotify.database.get_db(), channel_id):
