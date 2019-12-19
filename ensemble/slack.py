@@ -22,28 +22,19 @@ def register_slack(app: Flask):
         Config.SLACK_SIGNING_SECRET, SLACK_ENDPOINT, app,
     )
 
-    web_client = WebClient(token=Config.SLACK_BOT_USER_OAUTH_ACCESS_TOKEN)
-
     slack_event_adapter.on(
-        "app_mention", create_handle_mention(web_client),
+        "app_mention", handle_mention,
     )
-
     slack_event_adapter.on(
-        "link_shared", create_handle_link_shared(web_client),
+        "link_shared", handle_link_shared,
     )
 
 
-def create_handle_mention(web_client: WebClient):
-    def handle_mention(event_data: Dict):
-        current_app.logger.info("received mention event: %s", event_data)
-        process_app_mention(web_client, event_data)
-
-    return handle_mention
+def handle_mention(event_data: Dict):
+    current_app.logger.debug("received mention event: %s", event_data)
+    process_app_mention.delay(event_data)
 
 
-def create_handle_link_shared(web_client: WebClient):
-    def handle_link_shared(event_data: Dict):
-        current_app.logger.info("received link shared event: %s", event_data)
-        process_link_shared(web_client, event_data)
-
-    return handle_link_shared
+def handle_link_shared(event_data: Dict):
+    current_app.logger.debug("received link shared event: %s", event_data)
+    process_link_shared.delay(event_data)

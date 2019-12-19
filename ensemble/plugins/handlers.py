@@ -3,21 +3,27 @@ from typing import Tuple
 
 from slack import WebClient
 
+from ensemble import celery
 from ensemble.channel_id import generate_channel_id
+from ensemble.config import Config
 from ensemble.plugins import link_plugins
 from ensemble.plugins import mention_plugins
 
 
-def process_app_mention(web_client: WebClient, event_data: Dict):
+@celery.task()
+def process_app_mention(event_data: Dict):
     event, channel_id = parse_event_and_id(event_data)
+    web_client = WebClient(token=Config.SLACK_BOT_USER_OAUTH_ACCESS_TOKEN)
 
     for mention_plugin in mention_plugins:
         if mention_plugin.matches(event):
             mention_plugin.handle(web_client, channel_id, event)
 
 
-def process_link_shared(web_client: WebClient, event_data: Dict):
+@celery.task()
+def process_link_shared(event_data: Dict):
     event, channel_id = parse_event_and_id(event_data)
+    web_client = WebClient(token=Config.SLACK_BOT_USER_OAUTH_ACCESS_TOKEN)
 
     for link_plugin in link_plugins:
         if link_plugin.matches(event):
