@@ -14,3 +14,8 @@ repos:
     rev: v1.8.0
     hooks:
     -   id: reorder-python-imports
+-   repo: git@github.com:humitos/mirrors-autoflake.git
+    rev: v1.3
+    hooks:
+      - id: autoflake
+        args: ['--in-place', '--remove-all-unused-imports']
