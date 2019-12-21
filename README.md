@@ -7,3 +7,12 @@ For example, all Spotify songs sent to a channel such as `#music` could be added
 ## Architecture
 
 Slackify has two main components. The web server handles all communication with Slack and creates tasks. The task executor asynchronously processes these tasks, often by communicating with Spotify and other 3rd parties.
+
+
+## Running Locally
+
+Launch a local rabbitmq server - `rabbitmq-server`
+
+Launch celery workers - `celery -A ensemble.plugins.handlers worker --loglevel=info`
+
+Launch the Flask server - `python main.py`

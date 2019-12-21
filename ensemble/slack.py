@@ -1,14 +1,11 @@
 import logging
 from typing import Dict
-from typing import Tuple
 
 from flask import current_app
 from flask import Flask
-from slack import WebClient
 from slackeventsapi import SlackEventAdapter
 
 from ensemble.config import Config
-from ensemble.plugins import mention_plugins
 from ensemble.plugins.handlers import process_app_mention
 from ensemble.plugins.handlers import process_link_shared
 

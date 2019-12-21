@@ -1,7 +1,6 @@
 import logging
 from typing import Dict
 
-from flask import current_app
 from slack import WebClient
 
 from ensemble.plugins.plugin import Plugin
